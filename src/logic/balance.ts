@@ -1,6 +1,6 @@
 // Single source of truth for all game numbers.
 
-import { Terrain } from "./types.ts"
+import { type BuildingSpec, type BuildingType, Terrain } from "./types.ts"
 
 /** Design viewport; the canvas resizes to the window (Scale.RESIZE). */
 export const VIEW = { width: 960, height: 600 } as const
@@ -26,3 +26,33 @@ export const WALK_SPEED: Record<Terrain, number> = {
   [Terrain.Rock]: 0,
   [Terrain.Water]: 0,
 }
+
+/** New village at checkpoint 1. */
+export const START = { wood: 50, stone: 20, peasants: 4 } as const
+
+export const BUILDINGS: Record<BuildingType, BuildingSpec> = {
+  woodcutter: {
+    cost: { wood: 10, stone: 0 },
+    workers: 1,
+    produces: { wood: 15, stone: 0 },
+    near: Terrain.Forest,
+    unlockStage: 1,
+  },
+  quarry: {
+    cost: { wood: 15, stone: 0 },
+    workers: 1,
+    produces: { wood: 0, stone: 10 },
+    near: Terrain.Rock,
+    unlockStage: 1,
+  },
+  rockPile: {
+    cost: { wood: 0, stone: 5 },
+    workers: 0,
+    produces: { wood: 0, stone: 0 },
+    near: null,
+    unlockStage: 1,
+  },
+}
+
+/** Share of the building cost refunded on sale (rounded down). */
+export const SELL_REFUND = 0.5

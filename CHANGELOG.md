@@ -11,3 +11,11 @@
 - Seeded 32×24 map: grass, forest/rock/water clusters around a 2×2 keep in the center, edge spawn.
 - Procedural tile art, drag pan, pinch and mouse wheel zoom.
 - Tests: same seed → same map; 50 seeds have every terrain and a reachable edge spawn.
+
+## M2 – Building and economy
+
+- Woodcutter, quarry, rock pile: placement rules (grass, free tile, next to forest/rock, cost),
+  sell for 50 %, tap a building to staff/unstaff it.
+- Per-stage payout from staffed buildings. HUD (stage, wood, stone, idle peasants), build bar,
+  error toasts, hover preview. Map view sits between HUD and bar.
+- Tests for placement, selling, workers, payout; e2e places a rock pile through the UI.

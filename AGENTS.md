@@ -45,10 +45,16 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
 ## Layout
 
 - `src/main.ts`: Phaser config (`Scale.RESIZE`, portrait + landscape), dev `globalThis.__game`.
-- `src/scenes/`: `BootScene` (builds textures) → `GameScene` (renders map).
-  `textures.ts`: procedural tile art (`TILE_PX`, texture keys). `cameraControls.ts`: drag pan,
-  pinch + wheel zoom around the pointer, min zoom = whole map fits, start zoom = screen covered.
-- `src/logic/`: `balance.ts`, `rng.ts`, `types.ts` (`Terrain`, `GameMap`), `map.ts`
-  (`generateMap(seed)`, `tileAt`, `reachableFromKeep`).
-- `tests/logic/` (Vitest, `vitest.config.ts`), `tests/e2e/` (Playwright, `playwright.config.ts`,
+- `src/scenes/`: `BootScene` (builds textures) → `GameScene` (map, buildings, taps) + `UIScene`
+  (HUD top, build bar bottom, toasts; restarts on resize). They share `GameState` and the selected
+  tool via `registry` (`shared.ts` `REG`) and signal via `game.events` (`EV.changed`, `EV.toast`).
+  Interactive UI panels block taps to the map (Phaser `globalTopOnly`).
+  `textures.ts`: procedural art (`TILE_PX`, texture keys). `cameraControls.ts`: viewport between
+  the UI bars (`HUD_H`, `BAR_H`), drag pan, pinch + wheel zoom, tap callback (`TAP_SLOP`).
+- `src/logic/`: `balance.ts` (`MAP`, `WALK_SPEED`, `START`, `BUILDINGS`, `SELL_REFUND`), `rng.ts`,
+  `types.ts`, `map.ts` (`generateMap`), `state.ts` (`newGame`, `idlePeasants`), `building.ts`
+  (`placeError`, `placeBuilding`, `sellBuilding`, `toggleWorkers`), `economy.ts` (`payout`),
+  `progression.ts` (`nextStage`).
+- `tests/logic/` (Vitest, `vitest.config.ts`; `helpers.ts` `stateFrom(rows)` builds a state from an
+  ASCII map), `tests/e2e/` (Playwright, `playwright.config.ts`,
   runs against `pnpm build && pnpm preview`, desktop + 375×667 phone).

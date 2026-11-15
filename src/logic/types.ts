@@ -21,3 +21,40 @@ export interface GameMap {
   /** Enemy spawn tiles on the map edge. */
   spawns: Point[]
 }
+
+export type BuildingType = "woodcutter" | "quarry" | "rockPile"
+
+export interface Resources {
+  wood: number
+  stone: number
+}
+
+export interface BuildingSpec {
+  cost: Resources
+  /** Workers needed to produce. 0 = not a work building. */
+  workers: number
+  /** Paid out once per stage when fully staffed. */
+  produces: Resources
+  /** Terrain that must be next to the building (8 neighbors), or null. */
+  near: Terrain | null
+  unlockStage: number
+}
+
+export interface Building {
+  id: number
+  type: BuildingType
+  x: number
+  y: number
+  workers: number
+}
+
+export interface GameState {
+  seed: number
+  map: GameMap
+  stage: number
+  res: Resources
+  /** All peasants; idle = peasants - assigned workers. */
+  peasants: number
+  buildings: Building[]
+  nextId: number
+}

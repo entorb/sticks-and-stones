@@ -13,3 +13,8 @@
   reachable from the keep over walkable terrain.
 - **Terrain movement** (`WALK_SPEED` in `balance.ts`): forest = 50 % walk speed, rock and water
   block movement.
+- **Adjacency** for woodcutter/quarry counts all 8 neighbors (diagonals too).
+- **Workers**: a new work building takes an idle peasant automatically; tap it (no tool selected)
+  to free or reassign the worker. Unstaffed buildings are drawn faded and produce nothing.
+- **Payout** happens when the next stage begins (`nextStage`), not at stage 1.
+- **Defend!** in M2 only advances the stage (no wave yet). M3 replaces it with the real wave.

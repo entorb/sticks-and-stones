@@ -8,4 +8,7 @@ Qube
 roguelike
 sonarcloud
 swiftshader
+unstaff
+Unstaffed
+unstaffs
 vitest

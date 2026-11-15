@@ -1,6 +1,6 @@
 import type { Scene } from "phaser"
 import { MAP } from "../logic/balance.ts"
-import { Terrain } from "../logic/types.ts"
+import { type BuildingType, Terrain } from "../logic/types.ts"
 
 /** Tile size in world pixels. */
 export const TILE_PX = 32
@@ -14,6 +14,7 @@ export const TERRAIN_KEY: Record<Terrain, string> = {
 export const GRASS_ALT = "t-grass2"
 export const KEEP_KEY = "keep"
 export const SPAWN_KEY = "spawn"
+export const buildingKey = (type: BuildingType) => `b-${type}`
 
 type G = ReturnType<Scene["make"]["graphics"]>
 
@@ -64,6 +65,35 @@ const DRAW: Record<string, (g: G) => void> = {
     for (let x = 6; x < s - 6; x += 10) g.fillRect(x, 4, 6, 8)
     g.fillStyle(0x5a_3b_1e).fillRect(s / 2 - 6, s - 22, 12, 16)
     g.fillStyle(0xb8_32_2a).fillTriangle(s / 2, 0, s / 2, 12, s / 2 + 12, 6)
+  },
+  [buildingKey("woodcutter")]: (g) => {
+    g.fillStyle(0x6b_44_23).fillRect(5, 12, 22, 16)
+    g.fillStyle(0x8b_2f_1f).fillTriangle(2, 13, 16, 2, 30, 13)
+    g.fillStyle(0x3d_2a_1a).fillRect(13, 19, 6, 9)
+    g.fillStyle(0xa0_70_3c).fillCircle(26, 27, 4).fillCircle(20, 29, 3)
+  },
+  [buildingKey("quarry")]: (g) => {
+    g.fillStyle(0x8f_87_7a).fillRect(5, 12, 22, 16)
+    g.fillStyle(0x4f_4a_43).fillTriangle(2, 13, 16, 3, 30, 13)
+    g.fillStyle(0x3d_2a_1a).fillRect(13, 19, 6, 9)
+    g.lineStyle(3, 0x5a_3b_1e).lineBetween(22, 30, 30, 20)
+    g.fillStyle(0xcf_cf_cf).fillTriangle(26, 18, 31, 22, 31, 17)
+  },
+  [buildingKey("rockPile")]: (g) => {
+    g.fillStyle(0x4d_48_40)
+    for (const [x, y, r] of [
+      [10, 24, 6],
+      [21, 24, 6],
+      [16, 16, 6],
+    ] as const)
+      g.fillCircle(x, y + 1, r)
+    g.fillStyle(0xa3_9b_8e)
+    for (const [x, y, r] of [
+      [10, 24, 5],
+      [21, 24, 5],
+      [16, 16, 5],
+    ] as const)
+      g.fillCircle(x, y, r)
   },
   [SPAWN_KEY]: (g) => {
     g.fillStyle(0x3d_2a_1a).fillRect(8, 4, 3, 26)

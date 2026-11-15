@@ -1,0 +1,148 @@
+import { type GameObjects, Scene } from "phaser"
+import { BUILDINGS } from "../logic/balance.ts"
+import { nextStage } from "../logic/progression.ts"
+import { idlePeasants } from "../logic/state.ts"
+import type { BuildingType, GameState, Resources } from "../logic/types.ts"
+import { BAR_H, EV, HUD_H, REG, type Tool } from "./shared.ts"
+
+const PAD = 6
+const BTN_MAX_W = 120
+const TOAST_MS = 1800
+const FONT = "sans-serif"
+const PANEL = 0x1e_16_0e
+const BTN = 0x4a_38_26
+const BTN_ON = 0xc9_a2_27
+const TEXT = "#f4e9c8"
+
+const NAMES: Record<BuildingType, string> = {
+  woodcutter: "Woodcutter",
+  quarry: "Quarry",
+  rockPile: "Rock pile",
+}
+
+const costText = (c: Resources) =>
+  [c.wood && `${c.wood} wood`, c.stone && `${c.stone} stone`].filter(Boolean).join(" ")
+
+const gainText = (g: Resources) =>
+  g.wood || g.stone ? `+${g.wood} wood, +${g.stone} stone` : "no production"
+
+interface Button {
+  tool: Tool | "defend"
+  bg: GameObjects.Rectangle
+}
+
+/** HUD (top) and build bar (bottom), runs on top of GameScene. */
+export class UIScene extends Scene {
+  private hud!: GameObjects.Text
+  private toast!: GameObjects.Text
+  private buttons: Button[] = []
+
+  constructor() {
+    super("UI")
+  }
+
+  private get state(): GameState {
+    return this.registry.get(REG.state) as GameState
+  }
+
+  create(): void {
+    const { width, height } = this.scale
+    // interactive panels swallow taps so they don't reach the map below
+    this.add.rectangle(0, 0, width, HUD_H, PANEL, 0.85).setOrigin(0).setInteractive()
+    this.hud = this.add.text(PAD * 2, HUD_H / 2, "", {
+      fontFamily: FONT,
+      fontSize: "15px",
+      color: TEXT,
+    })
+    this.hud.setOrigin(0, 0.5)
+    this.add
+      .rectangle(0, height - BAR_H, width, BAR_H, PANEL, 0.85)
+      .setOrigin(0)
+      .setInteractive()
+    this.toast = this.add
+      .text(width / 2, height - BAR_H - PAD * 2, "", {
+        fontFamily: FONT,
+        fontSize: "16px",
+        color: TEXT,
+        backgroundColor: "#000000aa",
+        padding: { x: 8, y: 4 },
+      })
+      .setOrigin(0.5, 1)
+      .setVisible(false)
+    this.makeBar()
+    this.refresh()
+
+    const onChanged = () => this.refresh()
+    const onToast = (msg: string) => this.showToast(msg)
+    const onResize = () => this.scene.restart()
+    this.game.events.on(EV.changed, onChanged)
+    this.game.events.on(EV.toast, onToast)
+    this.scale.on("resize", onResize)
+    this.events.once("shutdown", () => {
+      this.game.events.off(EV.changed, onChanged)
+      this.game.events.off(EV.toast, onToast)
+      this.scale.off("resize", onResize)
+    })
+  }
+
+  private makeBar(): void {
+    const { width, height } = this.scale
+    const items: [Tool | "defend", string][] = [
+      ...(Object.keys(NAMES) as BuildingType[]).map((t): [Tool, string] => [
+        t,
+        `${NAMES[t]}\n${costText(BUILDINGS[t].cost)}`,
+      ]),
+      ["sell", "Sell\n50% back"],
+      ["defend", "Defend!"],
+    ]
+    const w = Math.min(BTN_MAX_W, (width - PAD * (items.length + 1)) / items.length)
+    const h = BAR_H - PAD * 2
+    const x0 = (width - (w * items.length + PAD * (items.length - 1))) / 2
+    this.buttons = items.map(([tool, label], i) => {
+      const x = x0 + i * (w + PAD)
+      const y = height - BAR_H + PAD
+      const bg = this.add
+        .rectangle(x, y, w, h, BTN)
+        .setOrigin(0)
+        .setInteractive({ useHandCursor: true })
+      this.add
+        .text(x + w / 2, y + h / 2, label, {
+          fontFamily: FONT,
+          fontSize: "12px",
+          color: TEXT,
+          align: "center",
+        })
+        .setOrigin(0.5)
+      bg.on("pointerup", () => this.press(tool))
+      return { tool, bg }
+    })
+  }
+
+  private press(tool: Tool | "defend"): void {
+    if (tool === "defend") {
+      // shortcut: no wave yet (M3), Defend! just ends the stage
+      const gain = nextStage(this.state)
+      this.showToast(`Stage ${this.state.stage}: ${gainText(gain)}`)
+      this.game.events.emit(EV.changed)
+      return
+    }
+    const current = this.registry.get(REG.tool) as Tool
+    this.registry.set(REG.tool, current === tool ? null : tool)
+    this.refresh()
+  }
+
+  private refresh(): void {
+    const s = this.state
+    this.hud.setText(
+      `Stage ${s.stage} · Wood ${s.res.wood} · Stone ${s.res.stone} · Idle ${idlePeasants(s)}/${s.peasants}`,
+    )
+    const tool = this.registry.get(REG.tool) as Tool
+    for (const b of this.buttons) b.bg.setFillStyle(b.tool === tool ? BTN_ON : BTN)
+  }
+
+  private showToast(msg: string): void {
+    this.toast.setText(msg).setVisible(true)
+    this.time.removeAllEvents()
+    this.time.delayedCall(TOAST_MS, () => this.toast.setVisible(false))
+  }
+}

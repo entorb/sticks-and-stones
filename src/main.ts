@@ -2,6 +2,7 @@ import { AUTO, Game, Scale, type Types } from "phaser"
 import { VIEW } from "./logic/balance.ts"
 import { BootScene } from "./scenes/BootScene.ts"
 import { GameScene } from "./scenes/GameScene.ts"
+import { UIScene } from "./scenes/UIScene.ts"
 
 const config: Types.Core.GameConfig = {
   type: AUTO,
@@ -14,7 +15,7 @@ const config: Types.Core.GameConfig = {
     autoCenter: Scale.CENTER_BOTH,
   },
   input: { activePointers: 3 },
-  scene: [BootScene, GameScene],
+  scene: [BootScene, GameScene, UIScene],
 }
 
 document.addEventListener("DOMContentLoaded", () => {
