@@ -35,23 +35,23 @@ it("drag pans and wheel zooms the map", async ({ page }) => {
   expect((await canvas.screenshot()).equals(panned)).toBe(false)
 })
 
-it("build bar places a rock pile next to the keep", async ({ page }, info) => {
+it("build bar places a rock pile next to the hut", async ({ page }, info) => {
   await page.goto("")
   const canvas = page.locator("#game-container canvas")
   await expect(canvas).toBeVisible()
   await frames(page)
   const { width, height } = page.viewportSize() ?? { width: 0, height: 0 }
   // map view sits between HUD (36 px) and bar (64 px); start zoom covers the 32×24 map of
-  // 32 px tiles; keep center = view center
+  // 32 px tiles; the hut's tile center = view center
   const viewH = height - 36 - 64
   const tile = 32 * Math.max(width / 1024, viewH / 768)
   const hud = { x: 0, y: 0, width, height: 36 }
   const hudBefore = await page.screenshot({ clip: hud })
   await page.mouse.click(width / 2, height - 32) // rock pile = middle of 5 buttons
-  await page.mouse.click(width / 2 + 2.5 * tile, 36 + viewH / 2)
+  await page.mouse.click(width / 2 + 2 * tile, 36 + viewH / 2)
   await frames(page)
   expect((await page.screenshot({ clip: hud })).equals(hudBefore)).toBe(false)
-  await page.mouse.click(width / 2 - 2.5 * tile, 36 + viewH / 2 + tile)
+  await page.mouse.click(width / 2 - 2 * tile, 36 + viewH / 2 + tile)
   await page.screenshot({ path: `tmp/screens/build-${info.project.name}.png` })
 
   // Defend! = last of 5 bar buttons (width min(120, (W - 6*6) / 5), gap 6)

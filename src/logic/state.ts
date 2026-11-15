@@ -1,4 +1,4 @@
-import { MAP, START } from "./balance.ts"
+import { START } from "./balance.ts"
 import { generateMap } from "./map.ts"
 import type { Building, GameMap, GameState } from "./types.ts"
 
@@ -21,8 +21,5 @@ export const idlePeasants = (s: GameState): number =>
 export const buildingAt = (s: GameState, x: number, y: number): Building | undefined =>
   s.buildings.find((b) => b.x === x && b.y === y)
 
-export const isKeep = (map: GameMap, x: number, y: number): boolean =>
-  x >= map.keep.x &&
-  x < map.keep.x + MAP.keepSize &&
-  y >= map.keep.y &&
-  y < map.keep.y + MAP.keepSize
+export const isHut = (map: GameMap, x: number, y: number): boolean =>
+  x === map.hut.x && y === map.hut.y

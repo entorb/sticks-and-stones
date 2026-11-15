@@ -22,29 +22,25 @@ export const tileAt = (map: GameMap, x: number, y: number): Terrain | undefined 
 
 const pick = <T>(rng: Rng, items: readonly T[]): T => items[Math.floor(rng() * items.length)] as T
 
-/** Center of the keep in tile units (fractional for even keep sizes). */
-const keepCenter = (map: GameMap): Point => ({
-  x: map.keep.x + (MAP.keepSize - 1) / 2,
-  y: map.keep.y + (MAP.keepSize - 1) / 2,
-})
+const hutCenter = (map: GameMap): Point => map.hut
 
-const distToKeep = (map: GameMap, p: Point): number => {
-  const c = keepCenter(map)
+const distToHut = (map: GameMap, p: Point): number => {
+  const c = hutCenter(map)
   return Math.hypot(p.x - c.x, p.y - c.y)
 }
 
-/** Random-walk blob of `terrain`, starting in a ring around the keep, never inside the clear zone. */
+/** Random-walk blob of `terrain`, starting in a ring around the hut, never inside the clear zone. */
 function growCluster(map: GameMap, rng: Rng, terrain: Terrain, c: Cluster): void {
   const angle = rng() * Math.PI * 2
   const dist = c.minDist + rng() * (c.maxDist - c.minDist)
-  const kc = keepCenter(map)
+  const kc = hutCenter(map)
   const clamp = (v: number, max: number) => Math.min(max - 1, Math.max(0, Math.round(v)))
   let p = {
     x: clamp(kc.x + Math.cos(angle) * dist, map.width),
     y: clamp(kc.y + Math.sin(angle) * dist, map.height),
   }
   for (let placed = 0, steps = 0; placed < c.size && steps < c.size * 8; steps++) {
-    if (tileAt(map, p.x, p.y) === Terrain.Grass && distToKeep(map, p) > MAP.keepClearRadius) {
+    if (tileAt(map, p.x, p.y) === Terrain.Grass && distToHut(map, p) > MAP.hutClearRadius) {
       map.tiles[p.y * map.width + p.x] = terrain
       placed++
     }
@@ -54,10 +50,10 @@ function growCluster(map: GameMap, rng: Rng, terrain: Terrain, c: Cluster): void
   }
 }
 
-/** Tiles reachable from the keep over walkable terrain (WALK_SPEED > 0). */
-export function reachableFromKeep(map: GameMap): Set<number> {
-  const seen = new Set<number>([map.keep.y * map.width + map.keep.x])
-  const queue: Point[] = [map.keep]
+/** Tiles reachable from the hut over walkable terrain (WALK_SPEED > 0). */
+export function reachableFromHut(map: GameMap): Set<number> {
+  const seen = new Set<number>([map.hut.y * map.width + map.hut.x])
+  const queue: Point[] = [map.hut]
   for (let p = queue.shift(); p; p = queue.shift()) {
     for (const d of DIRS) {
       const n = { x: p.x + d.x, y: p.y + d.y }
@@ -79,7 +75,7 @@ function edgeTiles(map: GameMap): Point[] {
 }
 
 function pickSpawns(map: GameMap, rng: Rng): Point[] {
-  const reach = reachableFromKeep(map)
+  const reach = reachableFromHut(map)
   const candidates = edgeTiles(map).filter(
     (p) => tileAt(map, p.x, p.y) === Terrain.Grass && reach.has(p.y * map.width + p.x),
   )
@@ -91,15 +87,15 @@ function pickSpawns(map: GameMap, rng: Rng): Point[] {
   return spawns
 }
 
-/** Deterministic map from a seed: grass, terrain clusters around a central keep, edge spawns. */
+/** Deterministic map from a seed: grass, terrain clusters around the central hut, edge spawns. */
 export function generateMap(seed: number): GameMap {
   const rng = createRng(seed)
-  const { width, height, keepSize } = MAP
+  const { width, height } = MAP
   const map: GameMap = {
     width,
     height,
     tiles: new Array<Terrain>(width * height).fill(Terrain.Grass),
-    keep: { x: Math.floor((width - keepSize) / 2), y: Math.floor((height - keepSize) / 2) },
+    hut: { x: Math.floor(width / 2), y: Math.floor(height / 2) },
     spawns: [],
   }
   for (const [terrain, c] of [

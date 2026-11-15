@@ -34,7 +34,7 @@ describe("stage 1", () => {
   it("is won on generated maps with 2 rock piles next to the keep", () => {
     for (const seed of [1, 2, 3, 4, 5]) {
       const s = newGame(seed)
-      const k = s.map.keep
+      const k = s.map.hut
       expect(placeBuilding(s, "rockPile", k.x - 1, k.y)).toBeNull()
       expect(placeBuilding(s, "rockPile", k.x + 2, k.y + 1)).toBeNull()
       expect(simulateWave(s, TICKS_PER_SEC).result).toBe("won")

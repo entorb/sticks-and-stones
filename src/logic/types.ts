@@ -16,8 +16,8 @@ export interface GameMap {
   height: number
   /** Row-major, index = y * width + x. */
   tiles: Terrain[]
-  /** Top-left tile of the keep (MAP.keepSize square). */
-  keep: Point
+  /** Tile of the mayor's hut (1 tile, map center). */
+  hut: Point
   /** Enemy spawn tiles on the map edge. */
   spawns: Point[]
 }

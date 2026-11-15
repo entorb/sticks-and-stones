@@ -1,12 +1,12 @@
 import type { GameObjects, Scene } from "phaser"
-import { ENEMIES } from "../logic/balance.ts"
-import type { Battle, Enemy } from "../logic/combat.ts"
-import { PEASANT_KEY, RAIDER_KEY, ROCK_KEY, TILE_PX } from "./textures.ts"
+import { ENEMIES, MAYOR, PEASANT } from "../logic/balance.ts"
+import type { Battle, Unit } from "../logic/battle.ts"
+import { MAYOR_KEY, PEASANT_KEY, RAIDER_KEY, ROCK_KEY, TILE_PX } from "./textures.ts"
 
 /** Two throwers share a pile tile: shift them apart (px). */
 const SLOT_SHIFT = 7
-/** Throwers stand behind their pile so it stays visible (px). */
-const PILE_LIFT = 8
+/** Units stand a bit above their tile center so the building below stays visible (px). */
+const LIFT = 8
 /** Peak height of a rock's arc (px). */
 const ARC_PX = 18
 const ROCK_SCALE = 1.4
@@ -17,15 +17,25 @@ const THROW_MS = 90
 const HP_W = 20
 const HP_H = 3
 const HP_Y = 18
+const HP_ENEMY = 0xe0_3c_31
+const HP_FRIEND = 0x5a_c8_5a
+
+interface Look {
+  key: string
+  max: number
+  color: number
+  /** Horizontal offset (px). */
+  dx: number
+}
 
 const px = (tile: number) => (tile + 0.5) * TILE_PX
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
-/** Sprites for one battle: enemies (interpolated, HP bars), throwers, flying rocks. */
+/** Sprites for one battle: enemies, peasants, the mayor (interpolated, HP bars), flying rocks. */
 export class BattleView {
   private readonly scene: Scene
-  private readonly enemies = new Map<number, GameObjects.Image>()
-  private readonly throwers = new Map<number, GameObjects.Image>()
+  /** Unit sprites by unit id (enemies, peasants, mayor). */
+  private readonly units = new Map<number, GameObjects.Image>()
   private readonly rocks = new Map<number, GameObjects.Image>()
   private readonly bars: GameObjects.Graphics
 
@@ -37,19 +47,30 @@ export class BattleView {
   /** Sync sprites with the battle; `alpha` = progress (0..1) toward the next tick. */
   render(b: Battle, alpha: number): void {
     this.bars.clear()
+    const looks = new Map<number, Look>()
+    for (const e of b.enemies)
+      looks.set(e.id, { key: RAIDER_KEY, max: ENEMIES[e.kind].hp, color: HP_ENEMY, dx: 0 })
+    for (const p of b.peasants) {
+      // two throwers share a pile: stand side by side once there
+      const atPile = p.role === "thrower" && Math.hypot(p.x - p.home.x, p.y - p.home.y) < 0.05
+      const dx = atPile ? (p.id % 2 === 0 ? SLOT_SHIFT : -SLOT_SHIFT) : 0
+      looks.set(p.id, { key: PEASANT_KEY, max: PEASANT.hp, color: HP_FRIEND, dx })
+    }
+    looks.set(b.mayor.id, { key: MAYOR_KEY, max: MAYOR.hp, color: HP_FRIEND, dx: 0 })
+    const units: Unit[] = [...b.enemies, ...b.peasants, b.mayor]
     sync(
-      this.enemies,
-      b.enemies,
-      () => this.scene.add.image(0, 0, RAIDER_KEY).setDepth(2),
-      (img, e) => {
-        img.setPosition(px(lerp(e.px, e.x, alpha)), px(lerp(e.py, e.y, alpha)))
-        this.hpBar(img, e)
+      this.units,
+      units,
+      (u) => this.scene.add.image(0, 0, looks.get(u.id)?.key ?? PEASANT_KEY).setDepth(2),
+      (img, u) => {
+        const look = looks.get(u.id)
+        img.setPosition(
+          px(lerp(u.px, u.x, alpha)) + (look?.dx ?? 0),
+          px(lerp(u.py, u.y, alpha)) - LIFT,
+        )
+        if (look) this.hpBar(img, u.hp, look.max, look.color)
       },
     )
-    sync(this.throwers, b.throwers, (t) => {
-      const shift = t.id % 2 === 0 ? SLOT_SHIFT : -SLOT_SHIFT
-      return this.scene.add.image(px(t.x) + shift, px(t.y) - PILE_LIFT, PEASANT_KEY).setDepth(2)
-    })
     sync(
       this.rocks,
       b.rocks,
@@ -57,10 +78,7 @@ export class BattleView {
       (img, r) => {
         const t = Math.min(1, (r.total - r.ticks + alpha) / r.total)
         const arc = Math.sin(t * Math.PI) * ARC_PX
-        img.setPosition(
-          px(lerp(r.from.x, r.to.x, t)),
-          px(lerp(r.from.y, r.to.y, t)) - PILE_LIFT * (1 - t) - arc,
-        )
+        img.setPosition(px(lerp(r.from.x, r.to.x, t)), px(lerp(r.from.y, r.to.y, t)) - LIFT - arc)
       },
     )
   }
@@ -68,36 +86,31 @@ export class BattleView {
   /** Animate this tick's events (call before `render`, which removes dead sprites). */
   events(b: Battle): void {
     for (const ev of b.events) {
-      if (ev.type === "throw") this.pulse(this.throwers.get(ev.throwerId))
-      else if (ev.type === "hit") this.flash(this.enemies.get(ev.id))
-      else if (ev.type === "enemyDied") this.fadeOut(this.enemies, ev.id)
+      const img = this.units.get(ev.id)
+      if (!img) continue
+      if (ev.type === "throw")
+        this.scene.tweens.add({ targets: img, scaleY: 0.75, duration: THROW_MS, yoyo: true })
+      else if (ev.type === "hit") this.flash(img)
+      else this.fadeOut(ev.id, img)
     }
   }
 
-  private hpBar(img: GameObjects.Image, e: Enemy): void {
-    const max = ENEMIES[e.kind].hp
-    if (e.hp >= max) return
+  private hpBar(img: GameObjects.Image, hp: number, max: number, color: number): void {
+    if (hp >= max) return
     const x = img.x - HP_W / 2
     const y = img.y - HP_Y
     this.bars.fillStyle(0x00_00_00, 0.6).fillRect(x - 1, y - 1, HP_W + 2, HP_H + 2)
-    this.bars.fillStyle(0xe0_3c_31).fillRect(x, y, (HP_W * Math.max(0, e.hp)) / max, HP_H)
+    this.bars.fillStyle(color).fillRect(x, y, (HP_W * Math.max(0, hp)) / max, HP_H)
   }
 
-  private pulse(img: GameObjects.Image | undefined): void {
-    if (img) this.scene.tweens.add({ targets: img, scaleY: 0.75, duration: THROW_MS, yoyo: true })
-  }
-
-  private flash(img: GameObjects.Image | undefined): void {
-    if (!img) return
+  private flash(img: GameObjects.Image): void {
     img.setTint(HIT_TINT)
     this.scene.time.delayedCall(HIT_MS, () => img.active && img.clearTint())
   }
 
-  /** Detach a dead enemy's sprite and let it fade instead of vanishing. */
-  private fadeOut(sprites: Map<number, GameObjects.Image>, id: number): void {
-    const img = sprites.get(id)
-    if (!img) return
-    sprites.delete(id)
+  /** Detach a dead unit's sprite and let it fade instead of vanishing. */
+  private fadeOut(id: number, img: GameObjects.Image): void {
+    this.units.delete(id)
     img.setTint(HIT_TINT)
     this.scene.tweens.add({
       targets: img,
@@ -109,7 +122,8 @@ export class BattleView {
   }
 
   destroy(): void {
-    for (const m of [this.enemies, this.throwers, this.rocks]) sync(m, [], () => undefined as never)
+    sync(this.units, [], () => undefined as never)
+    sync(this.rocks, [], () => undefined as never)
     this.bars.destroy()
   }
 }

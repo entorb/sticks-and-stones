@@ -1,5 +1,4 @@
 import type { Scene } from "phaser"
-import { MAP } from "../logic/balance.ts"
 import { type BuildingType, Terrain } from "../logic/types.ts"
 
 /** Tile size in world pixels. */
@@ -12,11 +11,12 @@ export const TERRAIN_KEY: Record<Terrain, string> = {
   [Terrain.Water]: "t-water",
 }
 export const GRASS_ALT = "t-grass2"
-export const KEEP_KEY = "keep"
+export const HUT_KEY = "hut"
 export const SPAWN_KEY = "spawn"
 export const RAIDER_KEY = "u-raider"
 export const PEASANT_KEY = "u-peasant"
 export const ROCK_KEY = "rock"
+export const MAYOR_KEY = "u-mayor"
 export const buildingKey = (type: BuildingType) => `b-${type}`
 
 type G = ReturnType<Scene["make"]["graphics"]>
@@ -68,13 +68,18 @@ const DRAW: Record<string, (g: G) => void> = {
     g.lineStyle(2, 0x5a_98_c4)
     for (const y of [9, 22]) g.lineBetween(4, y, 12, y).lineBetween(18, y + 4, 27, y + 4)
   },
-  [KEEP_KEY]: (g) => {
-    const s = T * MAP.keepSize
-    g.fillStyle(0x3d_34_2a).fillRect(4, 8, s - 8, s - 8)
-    g.fillStyle(0x9a_94_88).fillRect(6, 10, s - 12, s - 14)
-    for (let x = 6; x < s - 6; x += 10) g.fillRect(x, 4, 6, 8)
-    g.fillStyle(0x5a_3b_1e).fillRect(s / 2 - 6, s - 22, 12, 16)
-    g.fillStyle(0xb8_32_2a).fillTriangle(s / 2, 0, s / 2, 12, s / 2 + 12, 6)
+  [HUT_KEY]: (g) => {
+    g.fillStyle(0x00_00_00, 0.25).fillEllipse(16, 29, 28, 6)
+    g.fillStyle(0x7a_55_30).fillRect(5, 14, 22, 15)
+    g.fillStyle(0xc9_a3_5a).fillTriangle(1, 16, 16, 2, 31, 16)
+    g.fillStyle(0xa8_84_3f).fillTriangle(8, 16, 16, 8, 24, 16)
+    g.fillStyle(0x3d_2a_1a).fillRect(13, 20, 6, 9)
+    g.fillStyle(0xb8_32_2a).fillRect(23, 1, 2, 10).fillTriangle(25, 1, 25, 6, 31, 3)
+  },
+  [MAYOR_KEY]: (g) => {
+    figure(g, 0x2a_4f_9e, 0xe8_c3_9e)
+    g.fillStyle(0x1b_1b_1b).fillRect(10, 2, 12, 3).fillRect(12, -1, 8, 4)
+    g.fillStyle(0xd4_af_37).fillRect(14, 15, 4, 4)
   },
   [buildingKey("woodcutter")]: (g) => {
     g.fillStyle(0x6b_44_23).fillRect(5, 12, 22, 16)
@@ -117,7 +122,7 @@ const DRAW: Record<string, (g: G) => void> = {
   },
 }
 
-const SIZE: Record<string, number> = { [KEEP_KEY]: T * MAP.keepSize, [ROCK_KEY]: 10 }
+const SIZE: Record<string, number> = { [ROCK_KEY]: 10 }
 
 /** Build all procedural textures once (BootScene). */
 export function makeTextures(scene: Scene): void {

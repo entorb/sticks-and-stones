@@ -15,11 +15,9 @@ export const VIEW = { width: 960, height: 600 } as const
 export const MAP = {
   width: 32,
   height: 24,
-  /** Keep is a square of this many tiles in the map center. */
-  keepSize: 2,
-  /** Tiles around the keep kept free (grass). */
-  keepClearRadius: 4,
-  /** Terrain clusters: count, tiles per cluster, distance band from the keep center. */
+  /** Tiles around the mayor's hut (map center) kept free (grass). */
+  hutClearRadius: 4,
+  /** Terrain clusters: count, tiles per cluster, distance band from the hut. */
   forest: { count: 4, size: 14, minDist: 6, maxDist: 13 },
   rock: { count: 3, size: 8, minDist: 6, maxDist: 12 },
   water: { count: 2, size: 10, minDist: 8, maxDist: 16 },
@@ -71,9 +69,17 @@ export const ENEMIES: Record<EnemyKind, EnemySpec> = {
   raider: { hp: 10, speed: 1, damage: 2, cooldown: 10, range: 1.2 },
 }
 
-/** Idle peasants defend from rock piles. */
+/** Enemies leave their path to attack a peasant or the mayor this close (tiles). */
+export const ENEMY_AGGRO = 2.5
+
+/** The mayor lives in the hut and fights in melee; the village is lost when the mayor dies. */
+export const MAYOR = { hp: 25, damage: 3, cooldown: 10, range: 1.3 } as const
+
+/** Peasants: workers stay at their building, idle ones walk to rock piles and throw. */
 export const PEASANT = {
   hp: 10,
+  /** Tiles per second on grass. */
+  speed: 1.5,
   /** Tiles. */
   throwRange: 4,
   throwDamage: 4,

@@ -1,11 +1,13 @@
 import { type GameObjects, Scene } from "phaser"
-import { BUILDINGS } from "../logic/balance.ts"
-import type { Battle } from "../logic/combat.ts"
+import { BUILDINGS, MAYOR } from "../logic/balance.ts"
+import type { Battle } from "../logic/battle.ts"
 import { idlePeasants } from "../logic/state.ts"
 import type { BuildingType, GameState, Resources } from "../logic/types.ts"
 import { BAR_H, EV, HUD_H, REG, type Tool } from "./shared.ts"
 
 const PAD = 6
+/** Below this screen width (px) the HUD uses a smaller font. */
+const NARROW = 480
 const BTN_MAX_W = 120
 const TOAST_MS = 1800
 const FONT = "sans-serif"
@@ -48,7 +50,7 @@ export class UIScene extends Scene {
     this.add.rectangle(0, 0, width, HUD_H, PANEL, 0.85).setOrigin(0).setInteractive()
     this.hud = this.add.text(PAD * 2, HUD_H / 2, "", {
       fontFamily: FONT,
-      fontSize: "15px",
+      fontSize: width < NARROW ? "13px" : "15px",
       color: TEXT,
     })
     this.hud.setOrigin(0, 0.5)
@@ -129,10 +131,13 @@ export class UIScene extends Scene {
   private refresh(): void {
     const s = this.state
     const b = this.registry.get(REG.battle) as Battle | null
+    const mayor = b ? Math.max(0, b.mayor.hp) : MAYOR.hp
     const people = b
-      ? `Enemies ${b.enemies.length + b.spawns.length}`
+      ? `Foes ${b.enemies.length + b.spawns.length}`
       : `Idle ${idlePeasants(s)}/${s.peasants}`
-    this.hud.setText(`Stage ${s.stage} · Wood ${s.res.wood} · Stone ${s.res.stone} · ${people}`)
+    this.hud.setText(
+      `Stage ${s.stage} · Wood ${s.res.wood} · Stone ${s.res.stone} · Mayor ${mayor} · ${people}`,
+    )
     const tool = this.registry.get(REG.tool) as Tool
     for (const btn of this.buttons)
       btn.bg.setFillStyle(btn.tool === tool ? BTN_ON : BTN).setAlpha(b ? 0.4 : 1)

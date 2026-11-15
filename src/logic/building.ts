@@ -1,6 +1,6 @@
 import { BUILDINGS, SELL_REFUND } from "./balance.ts"
 import { tileAt } from "./map.ts"
-import { buildingAt, idlePeasants, isKeep } from "./state.ts"
+import { buildingAt, idlePeasants, isHut } from "./state.ts"
 import { type BuildingType, type GameState, Terrain } from "./types.ts"
 
 export type PlaceError = "locked" | "terrain" | "occupied" | "notNear" | "cost"
@@ -21,7 +21,7 @@ export function placeError(
   const spec = BUILDINGS[type]
   if (s.stage < spec.unlockStage) return "locked"
   if (tileAt(s.map, x, y) !== Terrain.Grass) return "terrain"
-  if (isKeep(s.map, x, y) || buildingAt(s, x, y)) return "occupied"
+  if (isHut(s.map, x, y) || buildingAt(s, x, y)) return "occupied"
   if (spec.near !== null && !hasNeighbor(s, x, y, spec.near)) return "notNear"
   if (s.res.wood < spec.cost.wood || s.res.stone < spec.cost.stone) return "cost"
   return null

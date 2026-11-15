@@ -33,7 +33,7 @@ src/
     state.ts    # GameState: grid, resources, peasants, buildings, enemies, reputation
     economy.ts
     building.ts
-    pathing.ts  # flow field toward the keep
+    pathing.ts  # flow field toward the hut
     combat.ts
     waves.ts    # wave generation per stage + reputation
     progression.ts  # stages, checkpoints, mayor, renown
@@ -78,10 +78,10 @@ Keep a `CLAUDE.md` / `AGENTS.md` in the repo with these rules and the commands.
 ### Core loop
 
 1. **Build phase** (no timer): place buildings, assign peasants, repair walls. Press "Defend!" to start.
-2. **Defense phase:** one wave of enemies attacks from the map edges and paths toward the keep.
+2. **Defense phase:** one wave of enemies attacks from the map edges and paths toward the mayor's hut.
 3. **Result:**
    - **Win** → plunder (wood + stone), Reputation +1 (flawless = no wall damage: +2), new peasants arrive, next stage.
-   - **Lose** (an enemy reaches the keep) → **the village is lost.** The mayor keeps the Renown earned and founds a new village at the highest checkpoint reached.
+   - **Lose** (the mayor is killed) → **the village is lost.** The mayor keeps the Renown earned and founds a new village at the highest checkpoint reached.
 
 ### Acts and stages
 
@@ -108,7 +108,7 @@ After each mini boss, the next stage is slightly easier (a breather).
 ### Map
 
 - Tile grid, top-down or simple isometric (start top-down, it's easier), e.g. 32×24 tiles.
-- Keep in the center. Enemies spawn from 1–3 marked edge points (more spawn points in later stages).
+- The mayor's hut in the center (a simple 1-tile hut in the first levels, a keep later). Enemies spawn from 1–3 marked edge points (more spawn points in later stages).
 - Terrain: grass (buildable), forest (woodcutters must be adjacent, 50% walk speed), rock (quarries must be adjacent, blocks movement), water (blocks everything).
 - Maps are generated from a seed.
 
@@ -137,7 +137,7 @@ After each mini boss, the next stage is slightly easier (a breather).
 
 | Building | Cost | Unlock | Effect |
 |---|---|---|---|
-| Keep | – | Start | Lose if an enemy reaches it |
+| Mayor's hut | – | Start | Home of the mayor, who fights enemies in melee (has HP). Lose if the mayor dies |
 | Woodcutter | 10 wood | Start | +15 wood/stage, 1 worker, next to forest |
 | Quarry | 15 wood | Start | +10 stone/stage, 1 worker, next to rock |
 | Rock pile | 5 stone | Start | Defense spot. Throwers use 1 stone per 5 throws from the stockpile |
@@ -153,7 +153,7 @@ After each mini boss, the next stage is slightly easier (a breather).
 
 ### Enemy pathing
 
-- Use a **flow field** (BFS/Dijkstra from the keep over the grid). Recompute it when buildings change.
+- Use a **flow field** (Dijkstra from the hut over the grid, 8 directions). Recompute it when buildings change.
 - Walls are **passable with high cost**: enemies prefer going around, but if there's no path (or the detour is too long) they walk up to the wall and attack it until it breaks.
 - Water is impassable.
 
@@ -161,6 +161,8 @@ After each mini boss, the next stage is slightly easier (a breather).
 
 - Units have HP, damage, attack speed and range. Projectiles (rocks, arrows) are visual. Damage is applied on hit.
 - Throwers target the nearest enemy in range.
+- Units move freely (any direction, straight lines where possible), not tile by tile.
+- Enemies attack every peasant they come close to (workers at their buildings, throwers) and the mayor.
 - Enemy types in Act 1 (stats in `balance.ts`): raider, torchbearer, armored bandit, bandit archer, ram, captain.
 
 ### Mayor and Renown (permanent)
@@ -221,7 +223,7 @@ Vite + Phaser + TS strict, pnpm, Biome, Vitest, Playwright, pre-commit, GitHub A
 ✅ Empty game scene renders. All checks green in CI.
 
 **M1 – Map and camera**
-Seeded map generation, tile rendering, pan/zoom (touch + mouse), keep in the center.
+Seeded map generation, tile rendering, pan/zoom (touch + mouse), hut in the center.
 ✅ Unit test: same seed → same map. Screenshot shows the map.
 
 **M2 – Building and economy**

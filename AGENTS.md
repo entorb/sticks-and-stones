@@ -53,15 +53,18 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
   tool via `registry` (`shared.ts` `REG`) and signal via `game.events` (`EV.changed`, `EV.toast`).
   Interactive UI panels block taps to the map (Phaser `globalTopOnly`).
   Defend! → `GameScene` runs the battle in fixed ticks (`TICKS_PER_SEC`) in `update()`;
-  `battleView.ts` draws enemies (interpolated `px/py` → `x/y`, HP bars), throwers and rocks
+  `battleView.ts` draws all units by id (interpolated `px/py` → `x/y`, HP bars) and rocks
   (`Battle.rocks`, arc). Build phase: dotted enemy route + rock pile range circle.
   `textures.ts`: procedural art (`TILE_PX`, texture keys). `cameraControls.ts`: viewport between
   the UI bars (`HUD_H`, `BAR_H`), drag pan, pinch + wheel zoom, tap callback (`TAP_SLOP`).
 - `src/logic/`: `balance.ts` (`MAP`, `WALK_SPEED`, `START`, `BUILDINGS`, `SELL_REFUND`), `rng.ts`,
   `types.ts`, `map.ts` (`generateMap`), `state.ts` (`newGame`, `idlePeasants`), `building.ts`
   (`placeError`, `placeBuilding`, `sellBuilding`, `toggleWorkers`), `economy.ts` (`payout`),
-  `progression.ts` (`nextStage`), `pathing.ts` (`flowField` Dijkstra to the keep, `nextTile`),
-  `waves.ts` (`spawnSchedule`), `combat.ts` (`startWave`, `stepBattle`, `simulateWave`, `winStage`).
+  `progression.ts` (`nextStage`), `pathing.ts` (`flowField(map, goal)` 8-dir Dijkstra,
+  `nextTile`, `lineWalkable`, `waypoint` = straight-line shortcut), `waves.ts` (`spawnSchedule`),
+  `battle.ts` (unit types `Enemy`/`Peasant`/mayor, `moveToward`, `strike`), `defenders.ts`
+  (workers, walking throwers, rocks, mayor), `combat.ts` (`startWave`, `stepBattle` = enemies,
+  `simulateWave`, `winStage`).
 - `tests/logic/` (Vitest, `vitest.config.ts`; `helpers.ts` `stateFrom(rows)` builds a state from an
   ASCII map), `tests/e2e/` (Playwright, `playwright.config.ts`,
   runs against `pnpm build && pnpm preview`, desktop + 375×667 phone).

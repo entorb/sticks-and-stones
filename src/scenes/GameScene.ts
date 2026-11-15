@@ -1,5 +1,6 @@
 import { type GameObjects, Scene } from "phaser"
-import { BUILDINGS, MAP, PEASANT, TICKS_PER_SEC } from "../logic/balance.ts"
+import { BUILDINGS, PEASANT, TICKS_PER_SEC } from "../logic/balance.ts"
+import { type Battle, dist } from "../logic/battle.ts"
 import {
   type PlaceError,
   placeBuilding,
@@ -7,14 +8,14 @@ import {
   sellBuilding,
   toggleWorkers,
 } from "../logic/building.ts"
-import { type Battle, startWave, stepBattle, winStage } from "../logic/combat.ts"
-import { flowField, nextTile } from "../logic/pathing.ts"
+import { startWave, stepBattle, winStage } from "../logic/combat.ts"
+import { flowField, lineWalkable, waypoint } from "../logic/pathing.ts"
 import { buildingAt, newGame } from "../logic/state.ts"
-import { type BuildingType, type GameState, Terrain } from "../logic/types.ts"
+import { type BuildingType, type GameState, type Point, Terrain } from "../logic/types.ts"
 import { BattleView } from "./battleView.ts"
 import { addCameraControls } from "./cameraControls.ts"
 import { BAR_H, EV, HUD_H, REG, type Tool } from "./shared.ts"
-import { buildingKey, GRASS_ALT, KEEP_KEY, SPAWN_KEY, TERRAIN_KEY, TILE_PX } from "./textures.ts"
+import { buildingKey, GRASS_ALT, HUT_KEY, SPAWN_KEY, TERRAIN_KEY, TILE_PX } from "./textures.ts"
 
 const TICK_MS = 1000 / TICKS_PER_SEC
 const LOSS_DELAY_MS = 2500
@@ -24,6 +25,9 @@ const HOVER_BAD = 0xff_3b_30
 const PATH_COLOR = 0xf4_e9_c8
 const PATH_ALPHA = 0.55
 const PATH_DOT = 3
+/** Tiles between path dots. */
+const PATH_GAP = 0.8
+const MAX_PATH_LEGS = 100
 
 const ERROR_TEXT: Record<PlaceError, string> = {
   locked: "Not unlocked yet",
@@ -64,10 +68,9 @@ export class GameScene extends Scene {
     this.drawBuildings()
 
     const { map } = this.state
-    const keepPx = (MAP.keepSize * TILE_PX) / 2
     addCameraControls(this, {
       world: { width: map.width * TILE_PX, height: map.height * TILE_PX },
-      focus: { x: map.keep.x * TILE_PX + keepPx, y: map.keep.y * TILE_PX + keepPx },
+      focus: { x: (map.hut.x + 0.5) * TILE_PX, y: (map.hut.y + 0.5) * TILE_PX },
       insets: { top: HUD_H, bottom: BAR_H },
       onTap: (wx, wy) => this.tap(Math.floor(wx / TILE_PX), Math.floor(wy / TILE_PX)),
     })
@@ -93,18 +96,27 @@ export class GameScene extends Scene {
         this.add.image(x * TILE_PX, y * TILE_PX, key).setOrigin(0)
       }
     }
-    this.add.image(map.keep.x * TILE_PX, map.keep.y * TILE_PX, KEEP_KEY).setOrigin(0)
+    this.add.image(map.hut.x * TILE_PX, map.hut.y * TILE_PX, HUT_KEY).setOrigin(0)
     for (const s of map.spawns) this.add.image(s.x * TILE_PX, s.y * TILE_PX, SPAWN_KEY).setOrigin(0)
   }
 
-  /** Dotted enemy route from each spawn to the keep (build phase only). */
+  /** Dotted enemy route from each spawn to the hut (build phase only), as enemies walk it. */
   private drawPath(): void {
     const { map } = this.state
-    const field = flowField(map)
+    const field = flowField(map, map.hut)
     this.path.clear().fillStyle(PATH_COLOR, PATH_ALPHA)
     for (const s of map.spawns) {
-      for (let p = nextTile(map, field, s.x, s.y); p; p = nextTile(map, field, p.x, p.y)) {
-        this.path.fillCircle((p.x + 0.5) * TILE_PX, (p.y + 0.5) * TILE_PX, PATH_DOT)
+      let pos: Point = s
+      for (let n = 0; n < MAX_PATH_LEGS && dist(pos, map.hut) > 0; n++) {
+        const next = lineWalkable(map, pos, map.hut) ? map.hut : waypoint(map, field, pos)
+        if (!next) break
+        const steps = Math.ceil(dist(pos, next) / PATH_GAP)
+        for (let k = 1; k <= steps; k++) {
+          const x = pos.x + ((next.x - pos.x) * k) / steps
+          const y = pos.y + ((next.y - pos.y) * k) / steps
+          this.path.fillCircle((x + 0.5) * TILE_PX, (y + 0.5) * TILE_PX, PATH_DOT)
+        }
+        pos = next
       }
     }
   }
@@ -164,7 +176,7 @@ export class GameScene extends Scene {
   private endDefense(b: Battle): void {
     if (b.result === "lost") {
       // shortcut: no mayor/checkpoints yet (M6), a loss restarts at stage 1
-      this.game.events.emit(EV.toast, "The village is lost!")
+      this.game.events.emit(EV.toast, "The mayor has fallen. The village is lost!")
       this.time.delayedCall(LOSS_DELAY_MS, () => this.scene.restart({}))
       return
     }

@@ -6,7 +6,9 @@
 - **No Sentry / Matomo** for now.
 - **Scale.RESIZE**: canvas fills the window in portrait and landscape (PLAN: both orientations).
 - **Tests** live in `tests/logic/` and `tests/e2e/` as in PLAN.md (raptor colocates them).
-- **Keep** is 2×2 tiles in the center; a radius of 4 tiles around it stays grass.
+- **Mayor's hut** (1 tile, map center) replaces the keep for the first levels. The mayor (`MAYOR`:
+  25 HP, melee) fights from it; the village is lost when the mayor dies. Full HP every wave. A radius
+  of 4 tiles around the hut stays grass.
 - **Art**: procedural placeholder textures (`src/scenes/textures.ts`) instead of Kenney for now,
   no asset download needed. Swap in Kenney tiles later.
 - **Spawns**: 1 edge spawn for now (`MAP.spawnCount`), more in later stages. Spawns are always
@@ -18,10 +20,15 @@
   to free or reassign the worker. Unstaffed buildings are drawn faded and produce nothing.
 - **Payout** happens when the next stage begins (`nextStage`), not at stage 1.
 - **Defend!** in M2 only advances the stage (no wave yet). M3 replaces it with the real wave.
-- **Throwers** are placed on their rock pile at wave start (no walking), 2 per pile, piles nearest
-  to the keep first. Peasants without a pile stay inside the keep and don't fight.
+- **Peasants in battle**: workers stand at their building; idle peasants walk from the hut to the
+  free rock pile slots (2 per pile, piles nearest to the hut first) and throw once there. Idle
+  peasants without a slot stay inside the hut, safe. Dead workers leave their building unstaffed.
+- **Enemies** leave their path to attack any peasant or the mayor within `ENEMY_AGGRO` (2.5 tiles)
+  and a straight walk.
 - **Rocks** are projectiles in the logic (`PEASANT.rockSpeed`), damage lands on hit. Throwers skip
   enemies that rocks in flight will already kill.
-- **Pathing** uses 4 neighbors. Buildings don't block enemies yet (walls come in M4).
-- **Loss** restarts a fresh village at stage 1 until M6 adds the mayor and checkpoints.
+- **Movement** is free: 8-direction flow field plus straight-line shortcuts over the next 6 path
+  tiles (`waypoint`, `lineWalkable`; shortcuts avoid forest). Units don't block each other.
+  Buildings don't block units yet (walls come in M4).
+- **Loss** restarts a fresh village at stage 1 until M6 adds Renown and checkpoints.
 - **Plunder** for a won stage: 10 wood + 5 stone (`PLUNDER`).
