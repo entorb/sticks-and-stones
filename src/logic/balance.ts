@@ -1,6 +1,13 @@
 // Single source of truth for all game numbers.
 
-import { type BuildingSpec, type BuildingType, Terrain } from "./types.ts"
+import {
+  type BuildingSpec,
+  type BuildingType,
+  type EnemyKind,
+  type EnemySpec,
+  Terrain,
+  type WaveSpec,
+} from "./types.ts"
 
 /** Design viewport; the canvas resizes to the window (Scale.RESIZE). */
 export const VIEW = { width: 960, height: 600 } as const
@@ -56,3 +63,36 @@ export const BUILDINGS: Record<BuildingType, BuildingSpec> = {
 
 /** Share of the building cost refunded on sale (rounded down). */
 export const SELL_REFUND = 0.5
+
+/** Simulation rate. */
+export const TICKS_PER_SEC = 10
+
+export const ENEMIES: Record<EnemyKind, EnemySpec> = {
+  raider: { hp: 10, speed: 1, damage: 2, cooldown: 10, range: 1.2 },
+}
+
+/** Idle peasants defend from rock piles. */
+export const PEASANT = {
+  hp: 10,
+  /** Tiles. */
+  throwRange: 4,
+  throwDamage: 4,
+  /** Ticks between throws. */
+  throwCooldown: 10,
+  /** One stone from the stockpile per this many throws. */
+  throwsPerStone: 5,
+} as const
+
+/** Peasants that can throw from one rock pile. */
+export const ROCK_PILE_SLOTS = 2
+
+/** Waves per stage (index 0 = stage 1); later stages repeat the last entry. */
+export const WAVES: WaveSpec[] = [
+  { enemies: { raider: 5 }, interval: 20 },
+  { enemies: { raider: 7 }, interval: 18 },
+  { enemies: { raider: 9 }, interval: 16 },
+  { enemies: { raider: 12 }, interval: 14 },
+]
+
+/** Loot for a won stage. */
+export const PLUNDER = { wood: 10, stone: 5 } as const

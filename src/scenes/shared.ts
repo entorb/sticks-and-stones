@@ -4,10 +4,10 @@ import type { BuildingType } from "../logic/types.ts"
 export type Tool = BuildingType | "sell" | null
 
 /** Registry keys shared by GameScene and UIScene. */
-export const REG = { state: "state", tool: "tool" } as const
+export const REG = { state: "state", tool: "tool", battle: "battle" } as const
 
 /** game.events names. */
-export const EV = { changed: "state-changed", toast: "toast" } as const
+export const EV = { changed: "state-changed", toast: "toast", defend: "defend" } as const
 
 /** UI bar heights (screen px); the map camera fits between them. */
 export const HUD_H = 36

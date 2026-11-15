@@ -14,6 +14,9 @@ export const TERRAIN_KEY: Record<Terrain, string> = {
 export const GRASS_ALT = "t-grass2"
 export const KEEP_KEY = "keep"
 export const SPAWN_KEY = "spawn"
+export const RAIDER_KEY = "u-raider"
+export const PEASANT_KEY = "u-peasant"
+export const ROCK_KEY = "rock"
 export const buildingKey = (type: BuildingType) => `b-${type}`
 
 type G = ReturnType<Scene["make"]["graphics"]>
@@ -30,6 +33,13 @@ const grass = (g: G, base: number, tuft: number) => {
     [7, 27],
   ] as const)
     g.fillRect(x, y, 2, 3)
+}
+
+/** Small person: body color, skin color. */
+const figure = (g: G, body: number, skin: number) => {
+  g.fillStyle(0x00_00_00, 0.25).fillEllipse(16, 28, 16, 5)
+  g.fillStyle(body).fillRoundedRect(10, 13, 12, 14, 4)
+  g.fillStyle(skin).fillCircle(16, 9, 5)
 }
 
 const DRAW: Record<string, (g: G) => void> = {
@@ -95,18 +105,26 @@ const DRAW: Record<string, (g: G) => void> = {
     ] as const)
       g.fillCircle(x, y, r)
   },
+  [RAIDER_KEY]: (g) => figure(g, 0x8e_1b_1b, 0xd9_a0_7a),
+  [PEASANT_KEY]: (g) => figure(g, 0x9c_7a_4a, 0xe8_c3_9e),
+  [ROCK_KEY]: (g) => {
+    g.fillStyle(0x3d_3a_35).fillCircle(5, 5, 4)
+    g.fillStyle(0xa3_9b_8e).fillCircle(4, 4, 3)
+  },
   [SPAWN_KEY]: (g) => {
     g.fillStyle(0x3d_2a_1a).fillRect(8, 4, 3, 26)
     g.fillStyle(0xc0_39_2b).fillTriangle(11, 4, 11, 16, 28, 10)
   },
 }
 
+const SIZE: Record<string, number> = { [KEEP_KEY]: T * MAP.keepSize, [ROCK_KEY]: 10 }
+
 /** Build all procedural textures once (BootScene). */
 export function makeTextures(scene: Scene): void {
   for (const [key, draw] of Object.entries(DRAW)) {
     const g = scene.make.graphics({}, false)
     draw(g)
-    const size = key === KEEP_KEY ? T * MAP.keepSize : T
+    const size = SIZE[key] ?? T
     g.generateTexture(key, size, size)
     g.destroy()
   }

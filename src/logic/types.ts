@@ -58,3 +58,22 @@ export interface GameState {
   buildings: Building[]
   nextId: number
 }
+
+export type EnemyKind = "raider"
+
+export interface EnemySpec {
+  hp: number
+  /** Tiles per second on grass (scaled by WALK_SPEED). */
+  speed: number
+  damage: number
+  /** Ticks between attacks. */
+  cooldown: number
+  /** Melee reach in tiles. */
+  range: number
+}
+
+export interface WaveSpec {
+  enemies: Partial<Record<EnemyKind, number>>
+  /** Ticks between spawns. */
+  interval: number
+}

@@ -19,3 +19,10 @@
 - Per-stage payout from staffed buildings. HUD (stage, wood, stone, idle peasants), build bar,
   error toasts, hover preview. Map view sits between HUD and bar.
 - Tests for placement, selling, workers, payout; e2e places a rock pile through the UI.
+
+## M3 – Enemies and defense
+
+- Flow-field pathing (forest costs double, rock/water block), raider waves for stages 1–4.
+- Idle peasants throw rocks from rock piles (2 per pile, 1 stone per 5 throws); raiders kill
+  peasants in melee reach. Win → plunder + next stage, lose → new village.
+- Tests: stage 1 with 4 throwers is won (corridor + 5 generated maps), with 0 it is lost.

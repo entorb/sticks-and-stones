@@ -49,12 +49,15 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
   (HUD top, build bar bottom, toasts; restarts on resize). They share `GameState` and the selected
   tool via `registry` (`shared.ts` `REG`) and signal via `game.events` (`EV.changed`, `EV.toast`).
   Interactive UI panels block taps to the map (Phaser `globalTopOnly`).
+  Defend! → `GameScene` runs the battle in fixed ticks (`TICKS_PER_SEC`) in `update()`;
+  `battleView.ts` draws enemies (interpolated `px/py` → `x/y`), throwers and flying rocks.
   `textures.ts`: procedural art (`TILE_PX`, texture keys). `cameraControls.ts`: viewport between
   the UI bars (`HUD_H`, `BAR_H`), drag pan, pinch + wheel zoom, tap callback (`TAP_SLOP`).
 - `src/logic/`: `balance.ts` (`MAP`, `WALK_SPEED`, `START`, `BUILDINGS`, `SELL_REFUND`), `rng.ts`,
   `types.ts`, `map.ts` (`generateMap`), `state.ts` (`newGame`, `idlePeasants`), `building.ts`
   (`placeError`, `placeBuilding`, `sellBuilding`, `toggleWorkers`), `economy.ts` (`payout`),
-  `progression.ts` (`nextStage`).
+  `progression.ts` (`nextStage`), `pathing.ts` (`flowField` Dijkstra to the keep, `nextTile`),
+  `waves.ts` (`spawnSchedule`), `combat.ts` (`startWave`, `stepBattle`, `simulateWave`, `winStage`).
 - `tests/logic/` (Vitest, `vitest.config.ts`; `helpers.ts` `stateFrom(rows)` builds a state from an
   ASCII map), `tests/e2e/` (Playwright, `playwright.config.ts`,
   runs against `pnpm build && pnpm preview`, desktop + 375×667 phone).

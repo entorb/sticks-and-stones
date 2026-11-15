@@ -1,6 +1,6 @@
 import { type GameObjects, Scene } from "phaser"
 import { BUILDINGS } from "../logic/balance.ts"
-import { nextStage } from "../logic/progression.ts"
+import type { Battle } from "../logic/combat.ts"
 import { idlePeasants } from "../logic/state.ts"
 import type { BuildingType, GameState, Resources } from "../logic/types.ts"
 import { BAR_H, EV, HUD_H, REG, type Tool } from "./shared.ts"
@@ -22,9 +22,6 @@ const NAMES: Record<BuildingType, string> = {
 
 const costText = (c: Resources) =>
   [c.wood && `${c.wood} wood`, c.stone && `${c.stone} stone`].filter(Boolean).join(" ")
-
-const gainText = (g: Resources) =>
-  g.wood || g.stone ? `+${g.wood} wood, +${g.stone} stone` : "no production"
 
 interface Button {
   tool: Tool | "defend"
@@ -119,11 +116,9 @@ export class UIScene extends Scene {
   }
 
   private press(tool: Tool | "defend"): void {
+    if (this.registry.get(REG.battle)) return
     if (tool === "defend") {
-      // shortcut: no wave yet (M3), Defend! just ends the stage
-      const gain = nextStage(this.state)
-      this.showToast(`Stage ${this.state.stage}: ${gainText(gain)}`)
-      this.game.events.emit(EV.changed)
+      this.game.events.emit(EV.defend)
       return
     }
     const current = this.registry.get(REG.tool) as Tool
@@ -133,11 +128,14 @@ export class UIScene extends Scene {
 
   private refresh(): void {
     const s = this.state
-    this.hud.setText(
-      `Stage ${s.stage} · Wood ${s.res.wood} · Stone ${s.res.stone} · Idle ${idlePeasants(s)}/${s.peasants}`,
-    )
+    const b = this.registry.get(REG.battle) as Battle | null
+    const people = b
+      ? `Enemies ${b.enemies.length + b.spawns.length}`
+      : `Idle ${idlePeasants(s)}/${s.peasants}`
+    this.hud.setText(`Stage ${s.stage} · Wood ${s.res.wood} · Stone ${s.res.stone} · ${people}`)
     const tool = this.registry.get(REG.tool) as Tool
-    for (const b of this.buttons) b.bg.setFillStyle(b.tool === tool ? BTN_ON : BTN)
+    for (const btn of this.buttons)
+      btn.bg.setFillStyle(btn.tool === tool ? BTN_ON : BTN).setAlpha(b ? 0.4 : 1)
   }
 
   private showToast(msg: string): void {

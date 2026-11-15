@@ -51,5 +51,15 @@ it("build bar places a rock pile next to the keep", async ({ page }, info) => {
   await page.mouse.click(width / 2 + 2.5 * tile, 36 + viewH / 2)
   await frames(page)
   expect((await page.screenshot({ clip: hud })).equals(hudBefore)).toBe(false)
+  await page.mouse.click(width / 2 - 2.5 * tile, 36 + viewH / 2 + tile)
   await page.screenshot({ path: `tmp/screens/build-${info.project.name}.png` })
+
+  // Defend! = last of 5 bar buttons (width min(120, (W - 6*6) / 5), gap 6)
+  const w = Math.min(120, (width - 36) / 5)
+  const x0 = (width - (5 * w + 24)) / 2
+  const hudBuild = await page.screenshot({ clip: hud })
+  await page.mouse.click(x0 + 4 * (w + 6) + w / 2, height - 32)
+  await new Promise((r) => setTimeout(r, 6000))
+  expect((await page.screenshot({ clip: hud })).equals(hudBuild)).toBe(false)
+  await page.screenshot({ path: `tmp/screens/defend-${info.project.name}.png` })
 })

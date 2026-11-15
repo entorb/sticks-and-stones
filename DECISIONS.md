@@ -18,3 +18,9 @@
   to free or reassign the worker. Unstaffed buildings are drawn faded and produce nothing.
 - **Payout** happens when the next stage begins (`nextStage`), not at stage 1.
 - **Defend!** in M2 only advances the stage (no wave yet). M3 replaces it with the real wave.
+- **Throwers** are placed on their rock pile at wave start (no walking), 2 per pile, piles nearest
+  to the keep first. Peasants without a pile stay inside the keep and don't fight.
+- **Hits** are applied when the rock is thrown; the flying rock is only visual.
+- **Pathing** uses 4 neighbors. Buildings don't block enemies yet (walls come in M4).
+- **Loss** restarts a fresh village at stage 1 until M6 adds the mayor and checkpoints.
+- **Plunder** for a won stage: 10 wood + 5 stone (`PLUNDER`).

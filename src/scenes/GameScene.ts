@@ -1,5 +1,5 @@
 import { type GameObjects, Scene } from "phaser"
-import { BUILDINGS, MAP } from "../logic/balance.ts"
+import { BUILDINGS, MAP, TICKS_PER_SEC } from "../logic/balance.ts"
 import {
   type PlaceError,
   placeBuilding,
@@ -7,12 +7,16 @@ import {
   sellBuilding,
   toggleWorkers,
 } from "../logic/building.ts"
+import { type Battle, startWave, stepBattle, winStage } from "../logic/combat.ts"
 import { buildingAt, newGame } from "../logic/state.ts"
 import { type BuildingType, type GameState, Terrain } from "../logic/types.ts"
+import { BattleView } from "./battleView.ts"
 import { addCameraControls } from "./cameraControls.ts"
 import { BAR_H, EV, HUD_H, REG, type Tool } from "./shared.ts"
 import { buildingKey, GRASS_ALT, KEEP_KEY, SPAWN_KEY, TERRAIN_KEY, TILE_PX } from "./textures.ts"
 
+const TICK_MS = 1000 / TICKS_PER_SEC
+const LOSS_DELAY_MS = 2500
 const UNSTAFFED_ALPHA = 0.5
 const HOVER_OK = 0x7c_fc_00
 const HOVER_BAD = 0xff_3b_30
@@ -33,6 +37,9 @@ export class GameScene extends Scene {
   private state!: GameState
   private buildingLayer!: GameObjects.Container
   private hover!: GameObjects.Graphics
+  private battle: Battle | null = null
+  private view: BattleView | null = null
+  private acc = 0
 
   constructor() {
     super("Game")
@@ -42,6 +49,8 @@ export class GameScene extends Scene {
     this.state = newGame(data.seed ?? Date.now())
     this.registry.set(REG.state, this.state)
     this.registry.set(REG.tool, null)
+    this.registry.set(REG.battle, null)
+    this.battle = null
     this.drawMap()
     this.buildingLayer = this.add.container()
     this.hover = this.add.graphics()
@@ -57,9 +66,12 @@ export class GameScene extends Scene {
     })
     this.input.on("pointermove", () => this.drawHover())
 
-    const onChanged = () => this.drawBuildings()
-    this.game.events.on(EV.changed, onChanged)
-    this.events.once("shutdown", () => this.game.events.off(EV.changed, onChanged))
+    const onDefend = () => this.startDefense()
+    this.game.events.on(EV.defend, onDefend)
+    this.events.once("shutdown", () => {
+      this.game.events.off(EV.defend, onDefend)
+      this.view?.destroy()
+    })
     this.scene.launch("UI")
   }
 
@@ -91,7 +103,7 @@ export class GameScene extends Scene {
     this.hover.clear()
     const tool = this.registry.get(REG.tool) as Tool
     const p = this.input.activePointer
-    if (!tool || tool === "sell" || p.isDown) return
+    if (!tool || tool === "sell" || p.isDown || this.battle) return
     const w = this.cameras.main.getWorldPoint(p.x, p.y)
     const x = Math.floor(w.x / TILE_PX)
     const y = Math.floor(w.y / TILE_PX)
@@ -101,7 +113,49 @@ export class GameScene extends Scene {
       .strokeRect(x * TILE_PX + 1, y * TILE_PX + 1, TILE_PX - 2, TILE_PX - 2)
   }
 
+  override update(_time: number, delta: number): void {
+    const b = this.battle
+    if (!(b && this.view) || b.result !== "running") return
+    this.acc += delta
+    while (this.acc >= TICK_MS && b.result === "running") {
+      this.acc -= TICK_MS
+      stepBattle(this.state, b, TICKS_PER_SEC)
+      this.view.throws(b)
+      this.game.events.emit(EV.changed)
+    }
+    this.view.render(b, Math.min(1, this.acc / TICK_MS))
+    if (b.result !== "running") this.endDefense(b)
+  }
+
+  private startDefense(): void {
+    if (this.battle) return
+    this.registry.set(REG.tool, null)
+    this.hover.clear()
+    this.battle = startWave(this.state)
+    this.registry.set(REG.battle, this.battle)
+    this.view = new BattleView(this)
+    this.acc = 0
+    this.game.events.emit(EV.changed)
+  }
+
+  private endDefense(b: Battle): void {
+    if (b.result === "lost") {
+      // shortcut: no mayor/checkpoints yet (M6), a loss restarts at stage 1
+      this.game.events.emit(EV.toast, "The village is lost!")
+      this.time.delayedCall(LOSS_DELAY_MS, () => this.scene.restart({}))
+      return
+    }
+    this.view?.destroy()
+    this.view = null
+    this.battle = null
+    this.registry.set(REG.battle, null)
+    const gain = winStage(this.state)
+    this.game.events.emit(EV.toast, `Victory! +${gain.wood} wood, +${gain.stone} stone`)
+    this.game.events.emit(EV.changed)
+  }
+
   private tap(x: number, y: number): void {
+    if (this.battle) return
     const tool = this.registry.get(REG.tool) as Tool
     const b = buildingAt(this.state, x, y)
     if (tool === "sell") {
@@ -113,6 +167,7 @@ export class GameScene extends Scene {
     } else if (b && !toggleWorkers(this.state, b.id) && BUILDINGS[b.type].workers > 0) {
       this.game.events.emit(EV.toast, "No idle peasants")
     }
+    this.drawBuildings()
     this.game.events.emit(EV.changed)
     this.drawHover()
   }
