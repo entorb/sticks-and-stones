@@ -1,5 +1,14 @@
 import { ENEMIES, ENEMY_AGGRO, PLUNDER } from "./balance.ts"
-import { type Battle, dist, type Enemy, moveToward, newUnit, strike, type Unit } from "./battle.ts"
+import {
+  type Battle,
+  dist,
+  type Enemy,
+  moveToward,
+  newUnit,
+  reach,
+  strike,
+  type Unit,
+} from "./battle.ts"
 import {
   flyRocks,
   mayorAt,
@@ -8,6 +17,7 @@ import {
   throwRocks,
   walkThrowers,
 } from "./defenders.ts"
+import { hutCenter, hutTiles } from "./map.ts"
 import { flowField, lineWalkable, waypoint } from "./pathing.ts"
 import { nextStage } from "./progression.ts"
 import type { GameState, Resources } from "./types.ts"
@@ -19,11 +29,11 @@ export function startWave(s: GameState): Battle {
   const peasants = musterPeasants(s, () => id++)
   return {
     tick: 0,
-    field: flowField(s.map, s.map.hut),
+    field: flowField(s.map, hutTiles(s.map)),
     spawns: spawnSchedule(s.stage),
     enemies: [],
     peasants,
-    mayor: mayorAt(s.map.hut),
+    mayor: mayorAt(hutCenter(s.map)),
     rocks: [],
     throwsLeft: 0,
     nextId: id,
@@ -48,7 +58,7 @@ function prey(s: GameState, b: Battle, e: Enemy): Unit | undefined {
   for (const u of [b.mayor, ...b.peasants]) {
     const d = dist(e, u)
     if (d > ENEMY_AGGRO || (best && d >= dist(e, best))) continue
-    if (d <= ENEMIES[e.kind].range || lineWalkable(s.map, e, u)) best = u
+    if (reach(e, u) <= ENEMIES[e.kind].range || lineWalkable(s.map, e, u)) best = u
   }
   return best
 }
@@ -57,11 +67,11 @@ function prey(s: GameState, b: Battle, e: Enemy): Unit | undefined {
 function enemyAct(s: GameState, b: Battle, e: Enemy, tps: number): void {
   const spec = ENEMIES[e.kind]
   const p = prey(s, b, e)
-  if (p && dist(e, p) <= spec.range) {
+  if (p && reach(e, p) <= spec.range) {
     strike(b, e, p, spec.damage, spec.cooldown)
     return
   }
-  const hut = s.map.hut
+  const hut = hutCenter(s.map)
   const target = p ?? (lineWalkable(s.map, e, hut) ? hut : (waypoint(s.map, b.field, e) ?? hut))
   moveToward(s.map, e, target, spec.speed, tps)
 }

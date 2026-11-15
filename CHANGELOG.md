@@ -35,7 +35,7 @@
 
 ## Mayor's hut and free movement
 
-- The keep is replaced by a 1-tile hut with the mayor (25 HP), who fights enemies in melee; the
+- The keep is replaced by a 2×2 hut with the mayor (25 HP), who fights enemies in melee; the
   village is lost when the mayor dies. HUD shows the mayor's HP.
 - Units move freely (8 directions + straight-line shortcuts); throwers walk from the hut to their
   rock pile; workers stand at their buildings.

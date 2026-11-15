@@ -6,8 +6,9 @@
 - **No Sentry / Matomo** for now.
 - **Scale.RESIZE**: canvas fills the window in portrait and landscape (PLAN: both orientations).
 - **Tests** live in `tests/logic/` and `tests/e2e/` as in PLAN.md (raptor colocates them).
-- **Mayor's hut** (1 tile, map center) replaces the keep for the first levels. The mayor (`MAYOR`:
-  25 HP, melee) fights from it; the village is lost when the mayor dies. Full HP every wave. A radius
+- **Mayor's hut** (2×2 tiles, map center, `MAP.hutSize`) replaces the keep for the first levels. The mayor (`MAYOR`:
+  25 HP, melee) fights from its center; melee reach to and from the mayor counts from the hut wall
+  (`MAYOR.radius`). The village is lost when the mayor dies. Full HP every wave. A radius
   of 4 tiles around the hut stays grass.
 - **Art**: procedural placeholder textures (`src/scenes/textures.ts`) instead of Kenney for now,
   no asset download needed. Swap in Kenney tiles later.

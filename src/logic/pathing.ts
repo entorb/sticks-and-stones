@@ -38,12 +38,11 @@ function popMin(open: number[], dist: number[]): number {
   return open.splice(best, 1)[0] ?? 0
 }
 
-/** Walking cost from every tile to `goal` (Dijkstra, 8 neighbors); Infinity = no path. */
-export function flowField(map: GameMap, goal: Point): number[] {
+/** Walking cost from every tile to the nearest `goals` tile (Dijkstra, 8 neighbors); Infinity = no path. */
+export function flowField(map: GameMap, goals: Point[]): number[] {
   const dist = new Array<number>(map.width * map.height).fill(Number.POSITIVE_INFINITY)
-  const start = goal.y * map.width + goal.x
-  dist[start] = 0
-  const open = [start]
+  const open = goals.map((g) => g.y * map.width + g.x)
+  for (const i of open) dist[i] = 0
   // shortcut: linear-scan priority queue, O(n²) on 768 tiles; use a heap if maps grow
   while (open.length > 0) {
     const i = popMin(open, dist)

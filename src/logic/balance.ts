@@ -15,7 +15,9 @@ export const VIEW = { width: 960, height: 600 } as const
 export const MAP = {
   width: 32,
   height: 24,
-  /** Tiles around the mayor's hut (map center) kept free (grass). */
+  /** The mayor's hut is a square of this many tiles in the map center. */
+  hutSize: 2,
+  /** Tiles around the hut kept free (grass). */
   hutClearRadius: 4,
   /** Terrain clusters: count, tiles per cluster, distance band from the hut. */
   forest: { count: 4, size: 14, minDist: 6, maxDist: 13 },
@@ -73,7 +75,14 @@ export const ENEMIES: Record<EnemyKind, EnemySpec> = {
 export const ENEMY_AGGRO = 2.5
 
 /** The mayor lives in the hut and fights in melee; the village is lost when the mayor dies. */
-export const MAYOR = { hp: 25, damage: 3, cooldown: 10, range: 1.3 } as const
+export const MAYOR = {
+  hp: 25,
+  damage: 3,
+  cooldown: 10,
+  range: 1.3,
+  /** The mayor stands at the hut center; melee reach to and from the mayor counts from the hut wall. */
+  radius: 0.5,
+} as const
 
 /** Peasants: workers stay at their building, idle ones walk to rock piles and throw. */
 export const PEASANT = {

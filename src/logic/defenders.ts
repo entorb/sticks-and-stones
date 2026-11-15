@@ -7,8 +7,10 @@ import {
   moveToward,
   newUnit,
   type Peasant,
+  reach,
   strike,
 } from "./battle.ts"
+import { hutCenter } from "./map.ts"
 import { flowField, lineWalkable, waypoint } from "./pathing.ts"
 import { idlePeasants } from "./state.ts"
 import type { GameState, Point } from "./types.ts"
@@ -30,13 +32,13 @@ export function musterPeasants(s: GameState, nextId: () => number): Peasant[] {
       })
     }
   }
-  const hut = s.map.hut
+  const hut = hutCenter(s.map)
   const piles = s.buildings
     .filter((b) => b.type === "rockPile")
     .sort((a, b) => dist(a, hut) - dist(b, hut) || a.id - b.id)
   let idle = idlePeasants(s)
   for (const p of piles) {
-    const field = flowField(s.map, p)
+    const field = flowField(s.map, [p])
     for (let i = 0; i < ROCK_PILE_SLOTS && idle > 0; i++, idle--) {
       out.push({
         ...newUnit(nextId(), hut, PEASANT.hp),
@@ -50,7 +52,7 @@ export function musterPeasants(s: GameState, nextId: () => number): Peasant[] {
   return out
 }
 
-export const mayorAt = (hut: Point) => newUnit(MAYOR_ID, hut, MAYOR.hp)
+export const mayorAt = (center: Point) => newUnit(MAYOR_ID, center, MAYOR.hp)
 
 const arrived = (p: Peasant) => dist(p, p.home) < ARRIVED
 
@@ -131,7 +133,7 @@ export function flyRocks(b: Battle): void {
 export function mayorFights(b: Battle): void {
   let target: Enemy | undefined
   for (const e of b.enemies) {
-    if (dist(b.mayor, e) <= MAYOR.range && (!target || dist(b.mayor, e) < dist(b.mayor, target)))
+    if (reach(b.mayor, e) <= MAYOR.range && (!target || dist(b.mayor, e) < dist(b.mayor, target)))
       target = e
   }
   if (target) strike(b, b.mayor, target, MAYOR.damage, MAYOR.cooldown)

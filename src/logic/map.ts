@@ -22,7 +22,20 @@ export const tileAt = (map: GameMap, x: number, y: number): Terrain | undefined 
 
 const pick = <T>(rng: Rng, items: readonly T[]): T => items[Math.floor(rng() * items.length)] as T
 
-const hutCenter = (map: GameMap): Point => map.hut
+/** Center of the hut in tile units (tile centers are integers). */
+export const hutCenter = (map: GameMap): Point => ({
+  x: map.hut.x + (MAP.hutSize - 1) / 2,
+  y: map.hut.y + (MAP.hutSize - 1) / 2,
+})
+
+export const isHut = (map: GameMap, x: number, y: number): boolean =>
+  x >= map.hut.x && x < map.hut.x + MAP.hutSize && y >= map.hut.y && y < map.hut.y + MAP.hutSize
+
+export const hutTiles = (map: GameMap): Point[] =>
+  Array.from({ length: MAP.hutSize ** 2 }, (_, i) => ({
+    x: map.hut.x + (i % MAP.hutSize),
+    y: map.hut.y + Math.floor(i / MAP.hutSize),
+  }))
 
 const distToHut = (map: GameMap, p: Point): number => {
   const c = hutCenter(map)
@@ -95,7 +108,7 @@ export function generateMap(seed: number): GameMap {
     width,
     height,
     tiles: new Array<Terrain>(width * height).fill(Terrain.Grass),
-    hut: { x: Math.floor(width / 2), y: Math.floor(height / 2) },
+    hut: { x: Math.floor((width - MAP.hutSize) / 2), y: Math.floor((height - MAP.hutSize) / 2) },
     spawns: [],
   }
   for (const [terrain, c] of [

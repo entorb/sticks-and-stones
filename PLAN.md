@@ -108,7 +108,7 @@ After each mini boss, the next stage is slightly easier (a breather).
 ### Map
 
 - Tile grid, top-down or simple isometric (start top-down, it's easier), e.g. 32×24 tiles.
-- The mayor's hut in the center (a simple 1-tile hut in the first levels, a keep later). Enemies spawn from 1–3 marked edge points (more spawn points in later stages).
+- The mayor's hut in the center (a simple 2×2 hut in the first levels, a keep later). Enemies spawn from 1–3 marked edge points (more spawn points in later stages).
 - Terrain: grass (buildable), forest (woodcutters must be adjacent, 50% walk speed), rock (quarries must be adjacent, blocks movement), water (blocks everything).
 - Maps are generated from a seed.
 

@@ -1,3 +1,4 @@
+import { MAYOR } from "./balance.ts"
 import { walkSpeed } from "./pathing.ts"
 import type { EnemyKind, GameMap, Point } from "./types.ts"
 import type { Spawn } from "./waves.ts"
@@ -64,6 +65,10 @@ export interface Battle {
 export const MAYOR_ID = 0
 
 export const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y)
+
+/** Melee distance between units: the mayor is reached at the hut wall, not its center. */
+export const reach = (a: Unit, b: Unit) =>
+  dist(a, b) - (a.id === MAYOR_ID || b.id === MAYOR_ID ? MAYOR.radius : 0)
 
 export const newUnit = (id: number, p: Point, hp: number): Unit => ({
   id,

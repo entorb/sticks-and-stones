@@ -1,6 +1,6 @@
 import { BUILDINGS, SELL_REFUND } from "./balance.ts"
-import { tileAt } from "./map.ts"
-import { buildingAt, idlePeasants, isHut } from "./state.ts"
+import { isHut, tileAt } from "./map.ts"
+import { buildingAt, idlePeasants } from "./state.ts"
 import { type BuildingType, type GameState, Terrain } from "./types.ts"
 
 export type PlaceError = "locked" | "terrain" | "occupied" | "notNear" | "cost"

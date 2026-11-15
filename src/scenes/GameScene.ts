@@ -9,6 +9,7 @@ import {
   toggleWorkers,
 } from "../logic/building.ts"
 import { startWave, stepBattle, winStage } from "../logic/combat.ts"
+import { hutCenter, hutTiles } from "../logic/map.ts"
 import { flowField, lineWalkable, waypoint } from "../logic/pathing.ts"
 import { buildingAt, newGame } from "../logic/state.ts"
 import { type BuildingType, type GameState, type Point, Terrain } from "../logic/types.ts"
@@ -70,7 +71,7 @@ export class GameScene extends Scene {
     const { map } = this.state
     addCameraControls(this, {
       world: { width: map.width * TILE_PX, height: map.height * TILE_PX },
-      focus: { x: (map.hut.x + 0.5) * TILE_PX, y: (map.hut.y + 0.5) * TILE_PX },
+      focus: { x: (hutCenter(map).x + 0.5) * TILE_PX, y: (hutCenter(map).y + 0.5) * TILE_PX },
       insets: { top: HUD_H, bottom: BAR_H },
       onTap: (wx, wy) => this.tap(Math.floor(wx / TILE_PX), Math.floor(wy / TILE_PX)),
     })
@@ -103,12 +104,13 @@ export class GameScene extends Scene {
   /** Dotted enemy route from each spawn to the hut (build phase only), as enemies walk it. */
   private drawPath(): void {
     const { map } = this.state
-    const field = flowField(map, map.hut)
+    const field = flowField(map, hutTiles(map))
+    const hut = hutCenter(map)
     this.path.clear().fillStyle(PATH_COLOR, PATH_ALPHA)
     for (const s of map.spawns) {
       let pos: Point = s
-      for (let n = 0; n < MAX_PATH_LEGS && dist(pos, map.hut) > 0; n++) {
-        const next = lineWalkable(map, pos, map.hut) ? map.hut : waypoint(map, field, pos)
+      for (let n = 0; n < MAX_PATH_LEGS && dist(pos, hut) > 0; n++) {
+        const next = lineWalkable(map, pos, hut) ? hut : waypoint(map, field, pos)
         if (!next) break
         const steps = Math.ceil(dist(pos, next) / PATH_GAP)
         for (let k = 1; k <= steps; k++) {

@@ -1,4 +1,5 @@
 import type { Scene } from "phaser"
+import { MAP } from "../logic/balance.ts"
 import { type BuildingType, Terrain } from "../logic/types.ts"
 
 /** Tile size in world pixels. */
@@ -69,12 +70,20 @@ const DRAW: Record<string, (g: G) => void> = {
     for (const y of [9, 22]) g.lineBetween(4, y, 12, y).lineBetween(18, y + 4, 27, y + 4)
   },
   [HUT_KEY]: (g) => {
-    g.fillStyle(0x00_00_00, 0.25).fillEllipse(16, 29, 28, 6)
-    g.fillStyle(0x7a_55_30).fillRect(5, 14, 22, 15)
-    g.fillStyle(0xc9_a3_5a).fillTriangle(1, 16, 16, 2, 31, 16)
-    g.fillStyle(0xa8_84_3f).fillTriangle(8, 16, 16, 8, 24, 16)
-    g.fillStyle(0x3d_2a_1a).fillRect(13, 20, 6, 9)
-    g.fillStyle(0xb8_32_2a).fillRect(23, 1, 2, 10).fillTriangle(25, 1, 25, 6, 31, 3)
+    const s = T * MAP.hutSize
+    g.fillStyle(0x00_00_00, 0.25).fillEllipse(s / 2, s - 5, s - 6, 10)
+    g.fillStyle(0x7a_55_30).fillRect(8, 26, s - 16, s - 32)
+    g.fillStyle(0x5e_40_22)
+    for (let y = 32; y < s - 6; y += 7) g.fillRect(8, y, s - 16, 1)
+    g.fillStyle(0xc9_a3_5a).fillTriangle(2, 30, s / 2, 4, s - 2, 30)
+    g.fillStyle(0xa8_84_3f).fillTriangle(14, 30, s / 2, 14, s - 14, 30)
+    g.fillStyle(0x3d_2a_1a).fillRect(s / 2 - 6, s - 22, 12, 16)
+    g.fillStyle(0xf2_d2_7a)
+      .fillRect(14, 36, 8, 7)
+      .fillRect(s - 22, 36, 8, 7)
+    g.fillStyle(0xb8_32_2a)
+      .fillRect(s - 16, 0, 2, 14)
+      .fillTriangle(s - 14, 0, s - 14, 7, s - 4, 3)
   },
   [MAYOR_KEY]: (g) => {
     figure(g, 0x2a_4f_9e, 0xe8_c3_9e)
@@ -122,7 +131,7 @@ const DRAW: Record<string, (g: G) => void> = {
   },
 }
 
-const SIZE: Record<string, number> = { [ROCK_KEY]: 10 }
+const SIZE: Record<string, number> = { [HUT_KEY]: T * MAP.hutSize, [ROCK_KEY]: 10 }
 
 /** Build all procedural textures once (BootScene). */
 export function makeTextures(scene: Scene): void {

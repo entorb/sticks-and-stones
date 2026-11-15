@@ -5,6 +5,8 @@ import { MAYOR_KEY, PEASANT_KEY, RAIDER_KEY, ROCK_KEY, TILE_PX } from "./texture
 
 /** Two throwers share a pile tile: shift them apart (px). */
 const SLOT_SHIFT = 7
+/** The mayor is drawn in front of the hut door, below the hut center (px). */
+const MAYOR_AT_DOOR = 26
 /** Units stand a bit above their tile center so the building below stays visible (px). */
 const LIFT = 8
 /** Peak height of a rock's arc (px). */
@@ -24,8 +26,9 @@ interface Look {
   key: string
   max: number
   color: number
-  /** Horizontal offset (px). */
+  /** Sprite offset (px). */
   dx: number
+  dy: number
 }
 
 const px = (tile: number) => (tile + 0.5) * TILE_PX
@@ -49,14 +52,20 @@ export class BattleView {
     this.bars.clear()
     const looks = new Map<number, Look>()
     for (const e of b.enemies)
-      looks.set(e.id, { key: RAIDER_KEY, max: ENEMIES[e.kind].hp, color: HP_ENEMY, dx: 0 })
+      looks.set(e.id, { key: RAIDER_KEY, max: ENEMIES[e.kind].hp, color: HP_ENEMY, dx: 0, dy: 0 })
     for (const p of b.peasants) {
       // two throwers share a pile: stand side by side once there
       const atPile = p.role === "thrower" && Math.hypot(p.x - p.home.x, p.y - p.home.y) < 0.05
       const dx = atPile ? (p.id % 2 === 0 ? SLOT_SHIFT : -SLOT_SHIFT) : 0
-      looks.set(p.id, { key: PEASANT_KEY, max: PEASANT.hp, color: HP_FRIEND, dx })
+      looks.set(p.id, { key: PEASANT_KEY, max: PEASANT.hp, color: HP_FRIEND, dx, dy: 0 })
     }
-    looks.set(b.mayor.id, { key: MAYOR_KEY, max: MAYOR.hp, color: HP_FRIEND, dx: 0 })
+    looks.set(b.mayor.id, {
+      key: MAYOR_KEY,
+      max: MAYOR.hp,
+      color: HP_FRIEND,
+      dx: 0,
+      dy: MAYOR_AT_DOOR,
+    })
     const units: Unit[] = [...b.enemies, ...b.peasants, b.mayor]
     sync(
       this.units,
@@ -66,7 +75,7 @@ export class BattleView {
         const look = looks.get(u.id)
         img.setPosition(
           px(lerp(u.px, u.x, alpha)) + (look?.dx ?? 0),
-          px(lerp(u.py, u.y, alpha)) - LIFT,
+          px(lerp(u.py, u.y, alpha)) - LIFT + (look?.dy ?? 0),
         )
         if (look) this.hpBar(img, u.hp, look.max, look.color)
       },

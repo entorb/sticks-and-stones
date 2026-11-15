@@ -58,7 +58,7 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
   `textures.ts`: procedural art (`TILE_PX`, texture keys). `cameraControls.ts`: viewport between
   the UI bars (`HUD_H`, `BAR_H`), drag pan, pinch + wheel zoom, tap callback (`TAP_SLOP`).
 - `src/logic/`: `balance.ts` (`MAP`, `WALK_SPEED`, `START`, `BUILDINGS`, `SELL_REFUND`), `rng.ts`,
-  `types.ts`, `map.ts` (`generateMap`), `state.ts` (`newGame`, `idlePeasants`), `building.ts`
+  `types.ts`, `map.ts` (`generateMap`, `hutCenter`, `hutTiles`, `isHut`), `state.ts` (`newGame`, `idlePeasants`), `building.ts`
   (`placeError`, `placeBuilding`, `sellBuilding`, `toggleWorkers`), `economy.ts` (`payout`),
   `progression.ts` (`nextStage`), `pathing.ts` (`flowField(map, goal)` 8-dir Dijkstra,
   `nextTile`, `lineWalkable`, `waypoint` = straight-line shortcut), `waves.ts` (`spawnSchedule`),

@@ -20,6 +20,3 @@ export const idlePeasants = (s: GameState): number =>
 
 export const buildingAt = (s: GameState, x: number, y: number): Building | undefined =>
   s.buildings.find((b) => b.x === x && b.y === y)
-
-export const isHut = (map: GameMap, x: number, y: number): boolean =>
-  x === map.hut.x && y === map.hut.y
