@@ -1,4 +1,4 @@
-import { MAYOR, PEASANT, ROCK_PILE_SLOTS } from "./balance.ts"
+import { MAYOR, PEASANT } from "./balance.ts"
 import {
   type Battle,
   dist,
@@ -15,53 +15,81 @@ import { flowField, lineWalkable, waypoint } from "./pathing.ts"
 import { idlePeasants } from "./state.ts"
 import type { GameState, Point } from "./types.ts"
 
-/** A thrower counts as arrived this close to its pile (tiles). */
-const ARRIVED = 0.05
-
-/** Workers stand at their buildings; idle peasants leave the hut for the free rock pile slots. */
+/** Peasants leave their building or the hut, fetch rocks at the nearest pile and throw them. */
 export function musterPeasants(s: GameState, nextId: () => number): Peasant[] {
+  const piles = s.buildings.filter((b) => b.type === "rockPile")
+  const fields = new Map(piles.map((p) => [p.id, flowField(s.map, [p])]))
+  const muster = (at: Point, role: Peasant["role"], buildingId: number): Peasant => {
+    // shortcut: nearest pile by straight distance, not walking cost; fine while maps are open
+    const pile = [...piles].sort((a, b) => dist(at, a) - dist(at, b))[0]
+    return {
+      ...newUnit(nextId(), at, PEASANT.hp),
+      role,
+      home: pile ? { x: pile.x, y: pile.y } : { x: at.x, y: at.y },
+      buildingId,
+      field: pile ? (fields.get(pile.id) ?? []) : [],
+      rock: false,
+    }
+  }
   const out: Peasant[] = []
   for (const b of s.buildings) {
-    for (let i = 0; i < b.workers; i++) {
-      out.push({
-        ...newUnit(nextId(), b, PEASANT.hp),
-        role: "worker",
-        home: { x: b.x, y: b.y },
-        buildingId: b.id,
-        field: [],
-      })
-    }
+    for (let i = 0; i < b.workers; i++) out.push(muster(b, "worker", b.id))
   }
-  const hut = hutCenter(s.map)
-  const piles = s.buildings
-    .filter((b) => b.type === "rockPile")
-    .sort((a, b) => dist(a, hut) - dist(b, hut) || a.id - b.id)
-  let idle = idlePeasants(s)
-  for (const p of piles) {
-    const field = flowField(s.map, [p])
-    for (let i = 0; i < ROCK_PILE_SLOTS && idle > 0; i++, idle--) {
-      out.push({
-        ...newUnit(nextId(), hut, PEASANT.hp),
-        role: "thrower",
-        home: { x: p.x, y: p.y },
-        buildingId: p.id,
-        field,
-      })
-    }
-  }
+  // without a pile idle peasants stay safe inside the hut
+  const idle = piles.length > 0 ? idlePeasants(s) : 0
+  for (let i = 0; i < idle; i++) out.push(muster(hutCenter(s.map), "idle", -1))
   return out
 }
 
 export const mayorAt = (center: Point) => newUnit(MAYOR_ID, center, MAYOR.hp)
 
-const arrived = (p: Peasant) => dist(p, p.home) < ARRIVED
+/** Walk to the pile: straight when possible, else along the flow field. */
+function walkHome(s: GameState, p: Peasant, tps: number): void {
+  const target = lineWalkable(s.map, p, p.home) ? p.home : (waypoint(s.map, p.field, p) ?? p.home)
+  moveToward(s.map, p, target, PEASANT.speed, tps)
+}
 
-/** Throwers walk to their pile (straight when possible, else along the flow field). */
-export function walkThrowers(s: GameState, b: Battle, tps: number): void {
+/** Nearest live enemy within `range` of `from`. */
+function nearestEnemy(b: Battle, from: Point, range: number): Enemy | undefined {
+  let best: Enemy | undefined
+  for (const e of b.enemies) {
+    if (dist(from, e) <= range && (!best || dist(from, e) < dist(from, best))) best = e
+  }
+  return best
+}
+
+/** Without a rock: walk next to the pile (not onto it) and pick one up. With a rock: wait at the
+ * pile, or close in on an enemy near the pile until it is in throw range. */
+function peasantMoves(s: GameState, b: Battle, p: Peasant, tps: number): void {
+  const atPile = dist(p, p.home) <= PEASANT.pickupReach
+  if (!p.rock && atPile) p.rock = useStone(s, b)
+  const foe = p.rock ? nearestEnemy(b, p.home, PEASANT.alertRange) : undefined
+  if (foe && dist(p, foe) <= PEASANT.throwRange) return
+  if (foe && lineWalkable(s.map, p, foe)) moveToward(s.map, p, foe, PEASANT.speed, tps)
+  else if (!atPile) walkHome(s, p, tps)
+}
+
+const outOfStones = (s: GameState, b: Battle) => b.throwsLeft === 0 && s.res.stone === 0
+
+/** Workers hit an enemy in tool range; without a rock to get, they charge enemies near their pile
+ * (or building). True = the worker fought this tick. */
+function toolFight(s: GameState, b: Battle, p: Peasant, tps: number): boolean {
+  const close = nearestEnemy(b, p, PEASANT.toolRange)
+  if (close) {
+    strike(b, p, close, PEASANT.toolDamage, PEASANT.toolCooldown)
+    return true
+  }
+  if (p.rock || (p.field.length > 0 && !outOfStones(s, b))) return false
+  const foe = nearestEnemy(b, p.home, PEASANT.alertRange)
+  if (!(foe && lineWalkable(s.map, p, foe))) return false
+  moveToward(s.map, p, foe, PEASANT.speed, tps)
+  return true
+}
+
+export function movePeasants(s: GameState, b: Battle, tps: number): void {
   for (const p of b.peasants) {
-    if (p.role !== "thrower" || arrived(p)) continue
-    const target = lineWalkable(s.map, p, p.home) ? p.home : (waypoint(s.map, p.field, p) ?? p.home)
-    moveToward(s.map, p, target, PEASANT.speed, tps)
+    if (p.role === "worker" && toolFight(s, b, p, tps)) continue
+    if (p.field.length > 0) peasantMoves(s, b, p, tps)
   }
 }
 
@@ -94,13 +122,14 @@ function useStone(s: GameState, b: Battle): boolean {
   return true
 }
 
-/** Throwers at their pile throw at the nearest enemy in range. */
-export function throwRocks(s: GameState, b: Battle, tps: number): void {
+/** Peasants holding a rock throw it at the nearest enemy in range. */
+export function throwRocks(b: Battle, tps: number): void {
   const pending = pendingDamage(b)
   for (const t of b.peasants) {
-    if (t.role !== "thrower" || t.cooldown > 0 || !arrived(t)) continue
+    if (!t.rock || t.cooldown > 0) continue
     const target = pickTarget(b, t, pending)
-    if (!(target && useStone(s, b))) continue
+    if (!target) continue
+    t.rock = false
     const total = Math.max(1, Math.ceil((dist(t, target) / PEASANT.rockSpeed) * tps))
     const rock = {
       id: b.nextId,

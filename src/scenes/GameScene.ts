@@ -11,6 +11,7 @@ import {
 import { startWave, stepBattle, winStage } from "../logic/combat.ts"
 import { hutCenter, hutTiles } from "../logic/map.ts"
 import { flowField, lineWalkable, waypoint } from "../logic/pathing.ts"
+import { scenario } from "../logic/scenario.ts"
 import { buildingAt, newGame } from "../logic/state.ts"
 import { type BuildingType, type GameState, type Point, Terrain } from "../logic/types.ts"
 import { BattleView } from "./battleView.ts"
@@ -50,13 +51,17 @@ export class GameScene extends Scene {
   private battle: Battle | null = null
   private view: BattleView | null = null
   private acc = 0
+  private tickMs = TICK_MS
 
   constructor() {
     super("Game")
   }
 
   create(data: { seed?: number }): void {
-    this.state = newGame(data.seed ?? Date.now())
+    // dev only: ?seed=3&stage=2&piles=2&woodcutters=1&stone=0&speed=5&defend (see scenario.ts)
+    const dev = import.meta.env.DEV ? new URLSearchParams(location.search) : null
+    this.tickMs = TICK_MS / Number(dev?.get("speed") ?? 1)
+    this.state = dev?.size ? scenario(dev) : newGame(data.seed ?? Date.now())
     this.registry.set(REG.state, this.state)
     this.registry.set(REG.tool, null)
     this.registry.set(REG.battle, null)
@@ -84,6 +89,7 @@ export class GameScene extends Scene {
       this.view?.destroy()
     })
     this.scene.launch("UI")
+    if (dev?.has("defend")) this.startDefense()
   }
 
   private drawMap(): void {
@@ -153,13 +159,13 @@ export class GameScene extends Scene {
     const b = this.battle
     if (!(b && this.view) || b.result !== "running") return
     this.acc += delta
-    while (this.acc >= TICK_MS && b.result === "running") {
-      this.acc -= TICK_MS
+    while (this.acc >= this.tickMs && b.result === "running") {
+      this.acc -= this.tickMs
       stepBattle(this.state, b, TICKS_PER_SEC)
       this.view.events(b)
       this.game.events.emit(EV.changed)
     }
-    this.view.render(b, Math.min(1, this.acc / TICK_MS))
+    this.view.render(b, Math.min(1, this.acc / this.tickMs))
     if (b.result !== "running") this.endDefense(b)
   }
 
@@ -188,7 +194,10 @@ export class GameScene extends Scene {
     this.path.setVisible(true)
     this.registry.set(REG.battle, null)
     const gain = winStage(this.state)
-    this.game.events.emit(EV.toast, `Victory! +${gain.wood} wood, +${gain.stone} stone`)
+    this.game.events.emit(
+      EV.toast,
+      `Victory! +${gain.wood} wood, +${gain.stone} stone, +${gain.peasants} peasants`,
+    )
     this.game.events.emit(EV.changed)
   }
 

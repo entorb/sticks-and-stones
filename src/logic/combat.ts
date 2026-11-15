@@ -1,4 +1,4 @@
-import { ENEMIES, ENEMY_AGGRO, PLUNDER } from "./balance.ts"
+import { ENEMIES, ENEMY_AGGRO, PLUNDER, REPUTATION } from "./balance.ts"
 import {
   type Battle,
   dist,
@@ -13,9 +13,9 @@ import {
   flyRocks,
   mayorAt,
   mayorFights,
+  movePeasants,
   musterPeasants,
   throwRocks,
-  walkThrowers,
 } from "./defenders.ts"
 import { hutCenter, hutTiles } from "./map.ts"
 import { flowField, lineWalkable, waypoint } from "./pathing.ts"
@@ -30,7 +30,7 @@ export function startWave(s: GameState): Battle {
   return {
     tick: 0,
     field: flowField(s.map, hutTiles(s.map)),
-    spawns: spawnSchedule(s.stage),
+    spawns: spawnSchedule(s.stage, s.reputation),
     enemies: [],
     peasants,
     mayor: mayorAt(hutCenter(s.map)),
@@ -100,8 +100,8 @@ export function stepBattle(s: GameState, b: Battle, tps: number): void {
   }
   spawnEnemies(s, b)
   for (const e of b.enemies) enemyAct(s, b, e, tps)
-  walkThrowers(s, b, tps)
-  throwRocks(s, b, tps)
+  movePeasants(s, b, tps)
+  throwRocks(b, tps)
   mayorFights(b)
   flyRocks(b)
   removeDead(s, b)
@@ -110,12 +110,16 @@ export function stepBattle(s: GameState, b: Battle, tps: number): void {
   else if (b.spawns.length === 0 && b.enemies.length === 0) b.result = "won"
 }
 
-/** Plunder + next stage after a won wave; returns the total gain. */
-export function winStage(s: GameState): Resources {
+/** Plunder, Reputation, new peasants and next stage after a won wave; returns the total gain. */
+export function winStage(s: GameState): Resources & { peasants: number } {
   s.res.wood += PLUNDER.wood
   s.res.stone += PLUNDER.stone
+  // shortcut: always +REPUTATION.win; flawless (+2, no wall damage) comes with walls in M4
+  s.reputation += REPUTATION.win
+  const peasants = 1 + Math.floor(s.reputation / REPUTATION.arrivalsPer)
+  s.peasants += peasants
   const gain = nextStage(s)
-  return { wood: gain.wood + PLUNDER.wood, stone: gain.stone + PLUNDER.stone }
+  return { wood: gain.wood + PLUNDER.wood, stone: gain.stone + PLUNDER.stone, peasants }
 }
 
 /** Run a whole wave headless (tests, balancing). */

@@ -61,6 +61,13 @@ export const BUILDINGS: Record<BuildingType, BuildingSpec> = {
   },
 }
 
+/** Each building of a type already standing adds this share of the base cost to the next one. */
+export const COST_GROWTH = 0.5
+
+/** Reputation per won stage; new peasants per stage = 1 + floor(reputation / arrivalsPer);
+ * enemies per wave × (1 + enemyGrowth × reputation). */
+export const REPUTATION = { win: 1, arrivalsPer: 2, enemyGrowth: 0.1 } as const
+
 /** Share of the building cost refunded on sale (rounded down). */
 export const SELL_REFUND = 0.5
 
@@ -84,7 +91,7 @@ export const MAYOR = {
   radius: 0.5,
 } as const
 
-/** Peasants: workers stay at their building, idle ones walk to rock piles and throw. */
+/** Peasants fetch rocks at piles and throw; workers also hit with their tools. */
 export const PEASANT = {
   hp: 10,
   /** Tiles per second on grass. */
@@ -96,12 +103,18 @@ export const PEASANT = {
   throwCooldown: 10,
   /** Rock flight speed, tiles per second. */
   rockSpeed: 8,
+  /** Peasants pick up a rock this close to the pile center, standing next to it (tiles). */
+  pickupReach: 0.7,
+  /** Peasants with a rock walk toward enemies this close to their pile (tiles). */
+  alertRange: 7,
+  /** Workers hit enemies this close with their axe or pick (tiles). */
+  toolRange: 1.2,
+  toolDamage: 2,
+  /** Ticks between tool hits. */
+  toolCooldown: 10,
   /** One stone from the stockpile per this many throws. */
-  throwsPerStone: 5,
+  throwsPerStone: 2,
 } as const
-
-/** Peasants that can throw from one rock pile. */
-export const ROCK_PILE_SLOTS = 2
 
 /** Waves per stage (index 0 = stage 1); later stages repeat the last entry. */
 export const WAVES: WaveSpec[] = [

@@ -10,6 +10,7 @@ export function newGame(seed: number, map: GameMap = generateMap(seed)): GameSta
     stage: 1,
     res: { wood: START.wood, stone: START.stone },
     peasants: START.peasants,
+    reputation: 0,
     buildings: [],
     nextId: 1,
   }

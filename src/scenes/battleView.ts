@@ -3,8 +3,6 @@ import { ENEMIES, MAYOR, PEASANT } from "../logic/balance.ts"
 import type { Battle, Unit } from "../logic/battle.ts"
 import { MAYOR_KEY, PEASANT_KEY, RAIDER_KEY, ROCK_KEY, TILE_PX } from "./textures.ts"
 
-/** Two throwers share a pile tile: shift them apart (px). */
-const SLOT_SHIFT = 7
 /** The mayor is drawn in front of the hut door, below the hut center (px). */
 const MAYOR_AT_DOOR = 26
 /** Units stand a bit above their tile center so the building below stays visible (px). */
@@ -53,12 +51,8 @@ export class BattleView {
     const looks = new Map<number, Look>()
     for (const e of b.enemies)
       looks.set(e.id, { key: RAIDER_KEY, max: ENEMIES[e.kind].hp, color: HP_ENEMY, dx: 0, dy: 0 })
-    for (const p of b.peasants) {
-      // two throwers share a pile: stand side by side once there
-      const atPile = p.role === "thrower" && Math.hypot(p.x - p.home.x, p.y - p.home.y) < 0.05
-      const dx = atPile ? (p.id % 2 === 0 ? SLOT_SHIFT : -SLOT_SHIFT) : 0
-      looks.set(p.id, { key: PEASANT_KEY, max: PEASANT.hp, color: HP_FRIEND, dx, dy: 0 })
-    }
+    for (const p of b.peasants)
+      looks.set(p.id, { key: PEASANT_KEY, max: PEASANT.hp, color: HP_FRIEND, dx: 0, dy: 0 })
     looks.set(b.mayor.id, {
       key: MAYOR_KEY,
       max: MAYOR.hp,

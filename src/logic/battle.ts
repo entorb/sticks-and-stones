@@ -21,12 +21,15 @@ export interface Enemy extends Unit {
 }
 
 export interface Peasant extends Unit {
-  /** Worker: stays at `home` (its building). Thrower: walks to `home` (a rock pile), then throws. */
-  role: "worker" | "thrower"
+  /** Worker: left its building `buildingId` to defend. Idle: came out of the hut. */
+  role: "worker" | "idle"
+  /** The rock pile it fetches rocks from (its start point if there is no pile). */
   home: Point
   buildingId: number
-  /** Flow field toward `home` (throwers only). */
+  /** Flow field toward `home`; empty = no pile, the peasant stays put. */
   field: number[]
+  /** Carries a rock, ready to throw. */
+  rock: boolean
 }
 
 /** A thrown rock; it hits (applies damage) when `ticks` reaches 0. */

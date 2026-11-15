@@ -41,3 +41,23 @@
   rock pile; workers stand at their buildings.
 - Enemies attack any peasant or the mayor near them.
 - Unit tests and cspell not yet updated for these changes (paused on request).
+
+## All peasants defend
+
+- Workers (woodcutters, quarry workers) join the defense too; no more 2-thrower slot limit per pile.
+- Peasants fetch rocks: walk next to the nearest pile (not onto it), pick up a rock, close in on
+  enemies near the pile if needed, throw, return for the next rock.
+- Woodcutters and quarry workers hit with their tools when an enemy is in melee range, and charge
+  nearby enemies when no stone is left.
+
+## Dev tools
+
+- `node scripts/sim.ts seed=… piles=… every=…`: headless battle in Node with text frames.
+- Dev URL params `?seed&stage&peasants&piles&woodcutters&quarries&wood&stone&speed&defend`.
+
+## Economy
+
+- Reputation (HUD "Rep"): +1 per won stage; `1 + floor(reputation / 2)` new peasants arrive per
+  won stage; waves grow 10% per point.
+- Rocks cost 1 stone per 2 throws (was 5).
+- Each extra building of a type costs 50% more of its base cost; build bar shows the current price.

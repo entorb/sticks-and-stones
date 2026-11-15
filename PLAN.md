@@ -121,9 +121,9 @@ After each mini boss, the next stage is slightly easier (a breather).
 
 - New peasants **arrive automatically** each stage: `1 + floor(reputation / 2)`.
 - Each peasant is either **assigned to a work building** or **idle**.
-- **Idle peasants defend automatically:** in the defense phase they go to the nearest rock pile and throw rocks.
+- **All peasants defend automatically** (workers too): in the defense phase each walks to the nearest rock pile, stands next to it (not on it), picks up a rock, closes in on an enemy near the pile if needed, throws, and returns for the next rock. Woodcutters and quarry workers also fight with their tools (melee) when an enemy is too close or no stone is left.
 - Peasants on a stone wall get bonus range. Enemies can kill peasants.
-- Core tension: workers grow the economy, idle peasants defend.
+- Core tension (owner decision: exposure): workers start the battle at their building, often far out near forest or rock, and must walk to a pile, so they are exposed. A dead worker leaves its building unstaffed and is one peasant less. Peasants only come from arrivals, so every loss hurts.
 
 ### Reputation (in-run)
 
@@ -140,7 +140,7 @@ After each mini boss, the next stage is slightly easier (a breather).
 | Mayor's hut | – | Start | Home of the mayor, who fights enemies in melee (has HP). Lose if the mayor dies |
 | Woodcutter | 10 wood | Start | +15 wood/stage, 1 worker, next to forest |
 | Quarry | 15 wood | Start | +10 stone/stage, 1 worker, next to rock |
-| Rock pile | 5 stone | Start | Defense spot. Throwers use 1 stone per 5 throws from the stockpile |
+| Rock pile | 5 stone | Start | Defense spot. Throwers use 1 stone per 2 throws from the stockpile |
 | Palisade (1 tile) | 5 wood | Stage 5 | 40 HP, blocks enemies, takes double damage from fire |
 | Palisade gate | 15 wood | Stage 5 | Like palisade, peasants can pass |
 | Stone wall (1 tile) | 10 stone | Stage 10 | 150 HP, peasants can stand on it (+2 range) |
@@ -148,6 +148,7 @@ After each mini boss, the next stage is slightly easier (a breather).
 | Corner tower | 30 stone | Stage 10 | Holds 3 defenders, +3 range |
 | Fletcher | 40 wood | Stage 15 | Train archers: 1 peasant + 10 wood. Archers have long range, don't work |
 
+- **Rising cost:** every building of a type already standing adds 50% of its base cost to the next one (woodcutter 10, 15, 20, …). Costs in the table are the first copy.
 - Wall repair in the build phase: 1 wood or stone per 10 HP.
 - Selling a building refunds 50%.
 
@@ -162,7 +163,7 @@ After each mini boss, the next stage is slightly easier (a breather).
 - Units have HP, damage, attack speed and range. Projectiles (rocks, arrows) are visual. Damage is applied on hit.
 - Throwers target the nearest enemy in range.
 - Units move freely (any direction, straight lines where possible), not tile by tile.
-- Enemies attack every peasant they come close to (workers at their buildings, throwers) and the mayor.
+- Enemies attack every peasant they come close to (peasants fetching or throwing rocks) and the mayor.
 - Enemy types in Act 1 (stats in `balance.ts`): raider, torchbearer, armored bandit, bandit archer, ram, captain.
 
 ### Mayor and Renown (permanent)

@@ -55,6 +55,8 @@ export interface GameState {
   res: Resources
   /** All peasants; idle = peasants - assigned workers. */
   peasants: number
+  /** In-run Reputation: more peasants arrive, waves grow. */
+  reputation: number
   buildings: Building[]
   nextId: number
 }

@@ -1,6 +1,7 @@
 import { type GameObjects, Scene } from "phaser"
-import { BUILDINGS, MAYOR } from "../logic/balance.ts"
+import { MAYOR } from "../logic/balance.ts"
 import type { Battle } from "../logic/battle.ts"
+import { buildCost } from "../logic/building.ts"
 import { idlePeasants } from "../logic/state.ts"
 import type { BuildingType, GameState, Resources } from "../logic/types.ts"
 import { BAR_H, EV, HUD_H, REG, type Tool } from "./shared.ts"
@@ -28,6 +29,7 @@ const costText = (c: Resources) =>
 interface Button {
   tool: Tool | "defend"
   bg: GameObjects.Rectangle
+  text: GameObjects.Text
 }
 
 /** HUD (top) and build bar (bottom), runs on top of GameScene. */
@@ -87,10 +89,7 @@ export class UIScene extends Scene {
   private makeBar(): void {
     const { width, height } = this.scale
     const items: [Tool | "defend", string][] = [
-      ...(Object.keys(NAMES) as BuildingType[]).map((t): [Tool, string] => [
-        t,
-        `${NAMES[t]}\n${costText(BUILDINGS[t].cost)}`,
-      ]),
+      ...(Object.keys(NAMES) as BuildingType[]).map((t): [Tool, string] => [t, NAMES[t]]),
       ["sell", "Sell\n50% back"],
       ["defend", "Defend!"],
     ]
@@ -104,7 +103,7 @@ export class UIScene extends Scene {
         .rectangle(x, y, w, h, BTN)
         .setOrigin(0)
         .setInteractive({ useHandCursor: true })
-      this.add
+      const text = this.add
         .text(x + w / 2, y + h / 2, label, {
           fontFamily: FONT,
           fontSize: "12px",
@@ -113,7 +112,7 @@ export class UIScene extends Scene {
         })
         .setOrigin(0.5)
       bg.on("pointerup", () => this.press(tool))
-      return { tool, bg }
+      return { tool, bg, text }
     })
   }
 
@@ -136,11 +135,14 @@ export class UIScene extends Scene {
       ? `Foes ${b.enemies.length + b.spawns.length}`
       : `Idle ${idlePeasants(s)}/${s.peasants}`
     this.hud.setText(
-      `Stage ${s.stage} · Wood ${s.res.wood} · Stone ${s.res.stone} · Mayor ${mayor} · ${people}`,
+      `Stage ${s.stage} · Rep ${s.reputation} · Wood ${s.res.wood} · Stone ${s.res.stone} · Mayor ${mayor} · ${people}`,
     )
     const tool = this.registry.get(REG.tool) as Tool
-    for (const btn of this.buttons)
+    for (const btn of this.buttons) {
       btn.bg.setFillStyle(btn.tool === tool ? BTN_ON : BTN).setAlpha(b ? 0.4 : 1)
+      const type = btn.tool as BuildingType
+      if (type in NAMES) btn.text.setText(`${NAMES[type]}\n${costText(buildCost(s, type))}`)
+    }
   }
 
   private showToast(msg: string): void {
