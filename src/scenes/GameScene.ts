@@ -1,13 +1,7 @@
 import { type GameObjects, Scene } from "phaser"
 import { BUILDINGS, PEASANT, TICKS_PER_SEC } from "../logic/balance.ts"
 import { type Battle, dist } from "../logic/battle.ts"
-import {
-  type PlaceError,
-  placeBuilding,
-  placeError,
-  sellBuilding,
-  toggleWorkers,
-} from "../logic/building.ts"
+import { type PlaceError, placeBuilding, placeError, toggleWorkers } from "../logic/building.ts"
 import { startWave, stepBattle, winStage } from "../logic/combat.ts"
 import { hutCenter, hutTiles } from "../logic/map.ts"
 import { flowField, lineWalkable, waypoint } from "../logic/pathing.ts"
@@ -28,6 +22,7 @@ import { addCameraControls } from "./cameraControls.ts"
 import { loadProfile, saveProfile } from "./profile.ts"
 import { BAR_H, EV, HUD_H, REG, type Tool } from "./shared.ts"
 import { buildingKey, GRASS_ALT, HUT_KEY, SPAWN_KEY, TERRAIN_KEY, TILE_PX } from "./textures.ts"
+import { choppingWorker } from "./workers.ts"
 
 const TICK_MS = 1000 / TICKS_PER_SEC
 const LOSS_DELAY_MS = 2500
@@ -43,7 +38,6 @@ const MAX_PATH_LEGS = 100
 const WALL_HP_W = 26
 const WALL_HP_H = 4
 const WALL_HP_COLOR = 0xe8_b8_3a
-
 const ERROR_TEXT: Record<PlaceError, string> = {
   locked: "Not unlocked yet",
   terrain: "Build on grass",
@@ -149,6 +143,7 @@ export class GameScene extends Scene {
 
   /** Buildings (unstaffed ones faded) and HP bars of damaged walls. */
   private drawBuildings(): void {
+    this.tweens.killTweensOf(this.buildingLayer.list)
     this.buildingLayer.removeAll(true)
     const bars = this.add.graphics()
     for (const b of this.state.buildings) {
@@ -156,6 +151,7 @@ export class GameScene extends Scene {
       const staffed = b.workers >= spec.workers && b.rocks !== 0
       const img = this.add.image(b.x * TILE_PX, b.y * TILE_PX, buildingKey(b.type)).setOrigin(0)
       this.buildingLayer.add(img.setAlpha(staffed ? 1 : UNSTAFFED_ALPHA))
+      if (staffed && !this.battle) this.buildingLayer.add(choppingWorker(this, this.state, b))
       if (b.hp === undefined || spec.hp === undefined || b.hp >= spec.hp) continue
       const x = b.x * TILE_PX + (TILE_PX - WALL_HP_W) / 2
       const y = b.y * TILE_PX + 2
@@ -169,7 +165,7 @@ export class GameScene extends Scene {
     this.hover.clear()
     const tool = this.registry.get(REG.tool) as Tool
     const p = this.input.activePointer
-    if (!tool || tool === "sell" || p.isDown || this.battle) return
+    if (!tool || p.isDown || this.battle) return
     const w = this.cameras.main.getWorldPoint(p.x, p.y)
     const x = Math.floor(w.x / TILE_PX)
     const y = Math.floor(w.y / TILE_PX)
@@ -203,7 +199,8 @@ export class GameScene extends Scene {
     this.hover.clear()
     this.battle = startWave(this.state)
     this.registry.set(REG.battle, this.battle)
-    this.view = new BattleView(this)
+    this.view = new BattleView(this, this.state)
+    this.drawBuildings()
     this.path.setVisible(false)
     this.acc = 0
     this.game.events.emit(EV.changed)
@@ -226,6 +223,7 @@ export class GameScene extends Scene {
     this.registry.set(REG.battle, null)
     const won = this.state.stage
     const gain = winStage(this.state, b)
+    this.drawBuildings()
     const renown = earnRenown(this.profile, won, this.state.stage)
     saveProfile(this.profile)
     this.drawPath()
@@ -241,9 +239,7 @@ export class GameScene extends Scene {
     if (this.battle) return
     const tool = this.registry.get(REG.tool) as Tool
     const b = buildingAt(this.state, x, y)
-    if (tool === "sell") {
-      if (b) sellBuilding(this.state, b.id)
-    } else if (tool) {
+    if (tool) {
       const err = placeBuilding(this.state, tool, x, y)
       if (err)
         this.game.events.emit(EV.toast, err === "notNear" ? NEAR_TEXT[tool] : ERROR_TEXT[err])

@@ -51,6 +51,8 @@ export interface Rock {
 export type BattleEvent =
   | { type: "wall"; id: number }
   | { type: "throw"; id: number }
+  /** Melee swing by unit `id`. */
+  | { type: "strike"; id: number }
   | { type: "hit"; id: number }
   | { type: "died"; id: number }
   | { type: "empty"; id: number }
@@ -115,5 +117,5 @@ export function strike(
   if (attacker.cooldown > 0) return
   victim.hp -= damage
   attacker.cooldown = cooldown
-  b.events.push({ type: "hit", id: victim.id })
+  b.events.push({ type: "strike", id: attacker.id }, { type: "hit", id: victim.id })
 }

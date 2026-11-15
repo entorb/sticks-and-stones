@@ -1,4 +1,4 @@
-import { BUILDINGS, COST_GROWTH, SELL_REFUND, UPGRADE } from "./balance.ts"
+import { BUILDINGS, COST_GROWTH, UPGRADE } from "./balance.ts"
 import { isHut, tileAt } from "./map.ts"
 import { buildingAt, idlePeasants } from "./state.ts"
 import { type BuildingType, type GameState, type Resources, Terrain } from "./types.ts"
@@ -70,18 +70,6 @@ export function placeBuilding(
   s.buildings.push({ id: s.nextId, type, x, y, workers, hp: spec.hp, rocks: spec.rocks })
   s.nextId += 1
   return null
-}
-
-/** Demolish, refund SELL_REFUND of what the next one would cost, workers become idle. */
-export function sellBuilding(s: GameState, id: number): boolean {
-  const i = s.buildings.findIndex((x) => x.id === id)
-  const b = s.buildings[i]
-  if (!b) return false
-  s.buildings.splice(i, 1)
-  const cost = buildCost(s, b.type)
-  s.res.wood += Math.floor(cost.wood * SELL_REFUND)
-  s.res.stone += Math.floor(cost.stone * SELL_REFUND)
-  return true
 }
 
 /** Staffed → unstaffed, or unstaffed → staffed if enough peasants are idle. */

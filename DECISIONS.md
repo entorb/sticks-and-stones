@@ -37,13 +37,15 @@
 - **Movement** (owner decision) is free: 8-direction flow field plus straight-line shortcuts over the next 6 path
   tiles (`waypoint`, `lineWalkable`; shortcuts avoid forest). Units don't block each other.
   Buildings don't block units yet (walls come in M4).
-- **Loss** restarts a fresh village at stage 1 until M6 adds Renown and checkpoints.
-- **Plunder** for a won stage: 10 wood + 5 stone (`PLUNDER`).
-- **Economy** (owner decisions): peasants only from arrivals (`1 + floor(reputation / 2)` per won
-  stage, after Reputation +1); no houses. Ammo 1 stone per 2 rocks. Rising cost: base ×
-  (1 + `COST_GROWTH` × same-type count), rounded. Selling refunds 50% of what the sold copy would
-  cost to rebuild, so sell + rebuild never makes money. Flawless (+2 Reputation) waits for walls in
-  M4; every win gives +1 until then. Wave growth `round(count × (1 + 0.1 × reputation))` per kind.
+- **Loss** refounds the village at the mayor's highest checkpoint (`CHECKPOINTS`), Renown kept;
+  the village's Reputation is lost with it (owner decision, roguelike core).
+- **Loot** (owner decision) per kill (`ENEMIES[k].loot`), paid on a win; replaces flat plunder.
+- **Economy** (owner decisions): peasants only from arrivals (`1 + floor(reputation / 3)` per won
+  stage, after Reputation +1, or +2 flawless); no houses. Ammo: rock piles and towers hold
+  `rocks` (25), refilled free each build phase; no stockpile stone per throw. Rising cost: base ×
+  (1 + `COST_GROWTH` × same-type count), rounded; walls and towers flat. No selling (owner
+  decision): buildings are permanent. Waves don't grow
+  with Reputation (PLAN's `× (1 + 0.1 × reputation)` dropped).
 - **Walls** (M4): palisade, gate, stone wall and tower are 1-tile buildings with HP (`BUILDINGS`).
   Enemies treat a wall tile as passable at `hp × WALL_PATH_COST` extra tiles in their flow field:
   they walk around unless the detour is longer than breaking through; then they hit the wall in
@@ -64,3 +66,5 @@
   wave; stage 6 is a breather. Spawn order is by kind (rams first), not interleaved.
 - **Build bar** shows unlocked buildings only and wraps into rows on narrow screens; the extra row
   overlaps the map bottom (camera inset unchanged).
+- **Pile switching** (M5): a peasant at an empty pile takes the nearest reachable pile or tower
+  with rocks (towers only with room, `TOWER_HOLDS`); straight-line nearest, like mustering.

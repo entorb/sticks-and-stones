@@ -1,7 +1,7 @@
 import type { BuildingType } from "../logic/types.ts"
 
 /** Selected build-bar tool; null = tap a building to toggle its workers. */
-export type Tool = BuildingType | "sell" | null
+export type Tool = BuildingType | null
 
 /** Registry keys shared by GameScene and UIScene. */
 export const REG = { state: "state", tool: "tool", battle: "battle", profile: "profile" } as const

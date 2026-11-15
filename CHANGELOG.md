@@ -74,3 +74,22 @@
   stages 1–10 with mini bosses at 5 (mob) and 10 (rams).
 - Build bar shows unlocked buildings only and wraps into two rows on phones.
 - Dev: `palisade=r` / `stoneWall=r` params build a wall ring around the hut.
+
+## Economy rework, roguelike mayor
+
+- Rock piles and towers hold 25 rocks, refilled free each build phase; empty piles are drawn
+  faded. Stone is only for building.
+- Loot per kill (raider 1 wood + 1 stone, torchbearer 2 wood, armored 1 wood + 2 stone, ram 10
+  stone) replaces flat plunder.
+- Waves scale by stage only; arrivals `1 + floor(reputation / 3)`.
+- The mayor keeps Renown (saved); a lost village is refounded at the highest checkpoint, its
+  Reputation is lost. HUD shows Renown and wraps to two lines on phones.
+- Selling buildings removed.
+
+## M5 – Reputation and peasants
+
+- Peasants at an empty rock pile switch to the nearest reachable pile or tower with rocks
+  (before, every idle peasant crowded the pile nearest the hut and stood still once it was empty).
+- Tests for Reputation (win, flawless), arrivals and pile switching; campaign test: a scripted
+  build (piles, woodcutters/quarries, palisade ring at 5, stone ring + towers at 10) survives
+  stages 1–10 on seeds 1–3.

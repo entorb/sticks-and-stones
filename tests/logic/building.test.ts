@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { BUILDINGS, START } from "../../src/logic/balance.ts"
-import { placeBuilding, placeError, sellBuilding, toggleWorkers } from "../../src/logic/building.ts"
+import { placeBuilding, placeError, toggleWorkers } from "../../src/logic/building.ts"
 import { idlePeasants } from "../../src/logic/state.ts"
 import { stateFrom } from "./helpers.ts"
 
@@ -69,18 +69,6 @@ describe("placeBuilding", () => {
     expect(placeBuilding(s, "woodcutter", 3, 0)).toBe("notNear")
     expect(s.buildings).toEqual([])
     expect(s.res.wood).toBe(START.wood)
-  })
-})
-
-describe("sellBuilding", () => {
-  it("refunds half the cost (rounded down) and frees workers", () => {
-    const s = stateFrom(ROWS)
-    placeBuilding(s, "quarry", 1, 2)
-    expect(sellBuilding(s, 1)).toBe(true)
-    expect(s.res.wood).toBe(START.wood - 15 + 7)
-    expect(s.buildings).toEqual([])
-    expect(idlePeasants(s)).toBe(START.peasants)
-    expect(sellBuilding(s, 1)).toBe(false)
   })
 })
 

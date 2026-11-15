@@ -80,7 +80,7 @@ function nearestEnemy(b: Battle, from: Point, range: number): Enemy | undefined 
  * (no walking back), or close in on an enemy near the pile until it is in throw range. */
 function peasantMoves(s: GameState, b: Battle, p: Peasant, tps: number): void {
   const atPile = dist(p, p.home) <= p.homeReach
-  if (!p.rock && atPile) p.rock = takeRock(s, b, p)
+  if (!p.rock && atPile) p.rock = takeRock(s, b, p) || switchPile(s, b, p)
   const foe = p.rock ? nearestEnemy(b, p.home, PEASANT.alertRange) : undefined
   if (foe && dist(p, foe) <= throwRange(s, p)) return
   if (foe && lineWalkable(b.peasantGrid, p, foe)) moveToward(s.map, p, foe, PEASANT.speed, tps)
@@ -88,6 +88,28 @@ function peasantMoves(s: GameState, b: Battle, p: Peasant, tps: number): void {
 }
 
 const pileOf = (s: GameState, p: Peasant) => s.buildings.find((x) => x.id === p.pileId)
+
+/** At an empty pile: head for the nearest reachable pile or tower with rocks and room; false = no
+ * rock this tick. */
+function switchPile(s: GameState, b: Battle, p: Peasant): false {
+  const manned = (id: number) => b.peasants.filter((x) => x.pileId === id).length
+  const piles = s.buildings
+    .filter((x) => x.rocks && (x.type !== "tower" || manned(x.id) < TOWER_HOLDS))
+    .sort((x, y) => dist(p, x) - dist(p, y))
+  for (const pile of piles) {
+    const field = flowField(b.peasantGrid, [pile])
+    if ((field[Math.round(p.y) * s.map.width + Math.round(p.x)] ?? 0) < Number.POSITIVE_INFINITY) {
+      Object.assign(p, {
+        home: { x: pile.x, y: pile.y },
+        homeReach: pile.type === "tower" ? PEASANT.towerReach : PEASANT.pickupReach,
+        pileId: pile.id,
+        field,
+      })
+      return false
+    }
+  }
+  return false
+}
 
 /** Workers hit an enemy in tool range; without a rock to get, they charge enemies near their pile
  * (or building). True = the worker fought this tick. */

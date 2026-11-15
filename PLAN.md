@@ -80,8 +80,8 @@ Keep a `CLAUDE.md` / `AGENTS.md` in the repo with these rules and the commands.
 1. **Build phase** (no timer): place buildings, assign peasants, repair walls. Press "Defend!" to start.
 2. **Defense phase:** one wave of enemies attacks from the map edges and paths toward the mayor's hut.
 3. **Result:**
-   - **Win** → plunder (wood + stone), Reputation +1 (flawless = no wall damage: +2), new peasants arrive, next stage.
-   - **Lose** (the mayor is killed) → **the village is lost.** The mayor keeps the Renown earned and founds a new village at the highest checkpoint reached.
+   - **Win** → loot from kills (wood + stone), Reputation +1 (flawless = no wall damage: +2), new peasants arrive, Renown for the mayor, next stage.
+   - **Lose** (the mayor is beaten) → **the village is lost** and its Reputation with it. The mayor flees, keeps the Renown earned and founds a new village at the highest checkpoint reached. This is the roguelike core: each village gets a little further.
 
 ### Acts and stages
 
@@ -119,7 +119,7 @@ After each mini boss, the next stage is slightly easier (a breather).
 
 ### Peasants
 
-- New peasants **arrive automatically** each stage: `1 + floor(reputation / 2)`.
+- New peasants **arrive automatically** each stage: `1 + floor(reputation / 3)`.
 - Each peasant is either **assigned to a work building** or **idle**.
 - **All peasants defend automatically** (workers too): in the defense phase each walks to the nearest rock pile, stands next to it (not on it), picks up a rock, closes in on an enemy near the pile if needed, throws, and returns for the next rock. Woodcutters and quarry workers also fight with their tools (melee) when an enemy is too close or no stone is left.
 - Peasants on a stone wall get bonus range. Enemies can kill peasants.
@@ -127,11 +127,12 @@ After each mini boss, the next stage is slightly easier (a breather).
 
 ### Reputation (in-run)
 
-- Starts at 0 in every new village.
+- Belongs to the village: starts at 0 in every new village and is lost with it.
 - Win +1, flawless win +2. (Defeat ends the village, so there is no penalty case.)
-- Effects: more arriving peasants (see above) **and** larger waves: `enemyCount = base(stage) × (1 + 0.10 × reputation)`.
+- Effect: more arriving peasants (see above). Waves scale by stage only, so each stage has a known
+  difficulty a player can learn across villages.
 - Shown in the HUD as a banner icon with its value.
-- Balance rule: one point of Reputation must give more defensive value (peasants) than it adds in enemies.
+- Balance rule: the wave curve must outgrow arrivals, so a village ends eventually and Renown carries the long game.
 
 ### Buildings (Act 1)
 
@@ -140,7 +141,7 @@ After each mini boss, the next stage is slightly easier (a breather).
 | Mayor's hut | – | Start | Home of the mayor, who fights enemies in melee (has HP). Lose if the mayor dies |
 | Woodcutter | 10 wood | Start | +15 wood/stage, 1 worker, next to forest |
 | Quarry | 15 wood | Start | +10 stone/stage, 1 worker, next to rock |
-| Rock pile | 5 stone | Start | Defense spot. Throwers use 1 stone per 2 throws from the stockpile |
+| Rock pile | 5 stone | Start | Defense spot, holds 25 rocks (refilled free each build phase; an empty pile is faded) |
 | Palisade (1 tile) | 5 wood | Stage 5 | 40 HP, blocks enemies, takes double damage from fire |
 | Palisade gate | 15 wood | Stage 5 | Like palisade, peasants can pass |
 | Stone wall (1 tile) | 10 stone | Stage 10 | 150 HP, peasants can stand on it (+2 range) |
@@ -150,7 +151,8 @@ After each mini boss, the next stage is slightly easier (a breather).
 
 - **Rising cost:** every building of a type already standing adds 50% of its base cost to the next one (woodcutter 10, 15, 20, …). Costs in the table are the first copy.
 - Wall repair in the build phase: 1 wood or stone per 10 HP.
-- Selling a building refunds 50%.
+- No selling: buildings are permanent (owner decision).
+- **Loot per kill** instead of flat plunder (e.g. raider 1 wood + 1 stone, ram 10 stone), paid after a won wave. Bigger waves pay more.
 
 ### Enemy pathing
 

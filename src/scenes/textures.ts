@@ -18,6 +18,14 @@ export const PEASANT_KEY = "u-peasant"
 export const ROCK_KEY = "rock"
 export const MAYOR_KEY = "u-mayor"
 export const buildingKey = (type: BuildingType) => `b-${type}`
+const AXE_KEY = "tool-axe"
+const PICK_KEY = "tool-pick"
+/** Tool a work building's worker carries and swings; the handle end (hand) is at TOOL_GRIP. */
+export const TOOL_KEY: Partial<Record<BuildingType, string>> = {
+  woodcutter: AXE_KEY,
+  quarry: PICK_KEY,
+}
+export const TOOL_GRIP = { x: 0.5, y: 0.875 } as const
 export const enemyKey = (kind: EnemyKind) => `u-${kind}`
 
 type G = ReturnType<Scene["make"]["graphics"]>
@@ -170,6 +178,14 @@ const DRAW: Record<string, (g: G) => void> = {
     g.fillStyle(0x6b_44_23).fillRect(1, 17, 30, 7)
     g.fillStyle(0x4f_4a_43).fillRect(27, 16, 5, 9)
     g.fillStyle(0x3d_2a_1a).fillCircle(8, 26, 4).fillCircle(24, 26, 4)
+  },
+  [AXE_KEY]: (g) => {
+    g.lineStyle(3, 0x5a_3b_1e).lineBetween(16, 28, 16, 6)
+    g.fillStyle(0xcf_cf_cf).fillTriangle(16, 7, 26, 3, 26, 15)
+  },
+  [PICK_KEY]: (g) => {
+    g.lineStyle(3, 0x5a_3b_1e).lineBetween(16, 28, 16, 6)
+    g.fillStyle(0xcf_cf_cf).fillTriangle(4, 12, 16, 4, 16, 9).fillTriangle(28, 12, 16, 4, 16, 9)
   },
   [PEASANT_KEY]: (g) => figure(g, 0x9c_7a_4a, 0xe8_c3_9e),
   [ROCK_KEY]: (g) => {

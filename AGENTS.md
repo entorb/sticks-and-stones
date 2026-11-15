@@ -24,34 +24,44 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
 
 ## Current status (update at the end of each session)
 
-- Done: M0 scaffold, M1 map + camera, M2 buildings + economy, M3 enemies + defense, plus owner
-  changes on top of M3: 2×2 mayor's hut with a fighting mayor (replaces the keep), free unit
-  movement, enemies attack all peasants (workers, idle peasants, mayor); all peasants defend
-  (fetch rocks beside the nearest pile, close in, throw; workers also melee with tools); economy
-  spec (Reputation + arrivals, waves +10%/rep, ammo 1 stone per 2 rocks, rising build cost +50%
-  per copy); dev tools (`scripts/sim.ts`, dev URL params). See `CHANGELOG.md`, `DECISIONS.md`.
-- M4 done (walls, gate, stone wall, tower, repair, upgrade, flawless, torchbearer/armored/ram,
-  waves 1–10), uncommitted. Ask the owner before committing. `tests/logic/walls.test.ts` is the
-  only current unit test file (passes).
-- Open balance questions (owner to decide, see last economy projection): stone runs dry stages 2–7
-  (options: quarry +15, or 1 stone per 3 rocks); peasants snowball (44 vs 25 enemies at stage 12;
-  M4 waves must outgrow arrivals, or arrivals `floor(rep / 3)`); wood surplus is for M4 walls.
-- **Paused by the owner** until the game is up and running: unit tests and cspell. 17 tests in
-  `tests/logic/` fail because they still assume the old 1-tile/keep layout, 4-direction pathing
-  and `flowField(map, goal)` / `throwers` APIs. Don't fix them unless asked; when asked, rewrite
-  them against the current logic (hut is `MAP.hutSize`² at `map.hut`, `flowField(map, goals[])`,
-  `Battle.peasants`/`mayor`, result `lost` = mayor dead). Still keep lint, typecheck of `src/`,
-  knip and e2e green before each commit:
-  `scripts/chk_js_format.sh && pnpm exec tsc --noEmit | grep -v "^tests/logic"; scripts/chk_js_e2e.sh && scripts/chk_js_dead.sh && scripts/chk_pre-commit.sh`.
-- Next: M5 (balance: sim says stage 5 mob and stage 10 rams beat 4–8 peasants with a palisade
-  ring; a scripted build must survive stages 1–10).
+- Done and committed (`537ed7b`): M0–M4, plus owner changes: 2×2 mayor's hut with a fighting
+  mayor, free unit movement, all peasants defend (fetch rocks beside the nearest pile or tower,
+  close in, throw; workers also melee with tools; a peasant still holding a rock waits instead of
+  walking back), enemies attack all peasants. M4: palisade/gate (stage 5), stone wall/tower
+  (stage 10), wall HP/breaking/repair/upgrade, flawless +2 Rep, torchbearer/armored/ram, waves
+  1–10 with mini bosses at 5 and 10. See `CHANGELOG.md`, `DECISIONS.md`.
+- Economy (owner, other session): no Reputation wave growth any more; arrivals
+  `1 + floor(rep / 3)`; rock piles and towers hold `rocks: 25`, refilled each build phase
+  (`nextStage`), no stockpile stone per throw; rising build cost +50% per copy (walls flat).
+- Parts of M6 already done: Renown (`earnRenown`, `RENOWN`), `CHECKPOINTS` start packages
+  (`newGame(seed, map, checkpoint)`), loss refounds at the highest checkpoint, profile saved in
+  `localStorage` (`scenes/profile.ts`, versioned `v: 1`), HUD shows Renown.
+  Still open for M6: menu scene (continue / new village / choose checkpoint), autosave + load of
+  the current village, save migration function, round-trip test, e2e reload mid-run.
+- M5 done (uncommitted): pile switching fix, `tests/logic/campaign.test.ts` (build bot survives
+  stages 1–10, seeds 1–3), Reputation/arrival tests in `progression.test.ts`. Balance finding for
+  the owner: the bot also wins 1–10 **without any walls** and hoards 200+ stone; no peasant dies.
+  Walls add nothing yet; waves 6–10 likely need to be harder (owner to decide). `tmp/bot.ts`
+  (env `NOWALL=1`, `PP=<peasants per pile>`, `F=<every> ST=<stage>` prints frames) is the dev copy.
+- **Next:** owner balance decision, then M6 rest (menu, autosave/load, migration, round trip).
+- **Paused by the owner** until the game is up and running: cspell and rewriting old unit tests.
+  Current tests: `walls`, `progression`, `campaign` in `tests/logic/` (pass). The
+  other files in `tests/logic/` fail (old 1-tile keep layout, `keep` in `helpers.ts`,
+  `flowField(map, goal)`, `throwers`). Don't fix them unless asked; when asked, rewrite them
+  against the current logic (hut is `MAP.hutSize`² at `map.hut`, `flowField(grid, goals[])`,
+  `Battle.peasants`/`mayor`, result `lost` = mayor dead). New features get new test files.
+  Before each commit keep lint, typecheck of `src/`, knip, e2e green and run current tests:
+  `scripts/chk_js_format.sh && pnpm exec tsc --noEmit | grep -v "^tests/logic"; pnpm exec vitest run tests/logic/walls.test.ts tests/logic/progression.test.ts tests/logic/campaign.test.ts; scripts/chk_js_e2e.sh && scripts/chk_js_dead.sh && scripts/chk_pre-commit.sh`.
+- Known gaps (owner may raise): on phones the 2nd build-bar row covers the map bottom; spawns are
+  grouped by kind, not interleaved; walled-in peasants stay put; stone walls give +2 range only
+  to peasants who happen to stand on them (no wall posts yet).
 - Headless Chromium runs ticks slowly: screenshot a battle with `waitForFunction` on
   `scene.getScene("Game").battle.tick >= N`, not a fixed timeout (`tmp/walls-tick.mjs`).
 - Owner workflow: plays the dev build, reports issues in short messages, says "continue" for the
-  next milestone and "commit" when happy. Review screenshots yourself before reporting.
-- Handy debug scripts (gitignored, may be gone): `tmp/econ.ts <seed>` (Node, 12-stage economy
-  projection with a simple build bot), `tmp/debug-shots.mjs` (browser screenshots of a wave, needs
-  `pnpm dev`). Prefer `node scripts/sim.ts …` for battles.
+  next milestone and "commit" when happy. Review screenshots yourself before reporting. Other
+  sessions may change files in parallel: check `git status` / `git diff` before editing.
+- Handy debug scripts (gitignored, may be gone): `tmp/walls-shots.mjs`, `tmp/walls-tick.mjs`
+  (browser screenshots via dev URL, need `pnpm dev`). Prefer `node scripts/sim.ts …` for battles.
 
 ## Architecture rules
 
@@ -102,15 +112,15 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
   Defend! → `GameScene` runs the battle in fixed ticks (`TICKS_PER_SEC`) in `update()`;
   `battleView.ts` draws all units by id (interpolated `px/py` → `x/y`, HP bars) and rocks
   (`Battle.rocks`, arc). Build phase: dotted enemy route + rock pile range circle.
-  `textures.ts`: procedural art (`TILE_PX`, texture keys; hut 64 px, mayor drawn at the door). `cameraControls.ts`: viewport between
+  `profile.ts`: mayor profile load/save (`localStorage`). `textures.ts`: procedural art (`TILE_PX`, texture keys; hut 64 px, mayor drawn at the door). `cameraControls.ts`: viewport between
   the UI bars (`HUD_H`, `BAR_H`), drag pan, pinch + wheel zoom, tap callback (`TAP_SLOP`).
-- `src/logic/`: `balance.ts` (`MAP`, `WALK_SPEED`, `START`, `BUILDINGS` (walls have `hp`), `UPGRADE`,
-  `REPAIR_HP`, `TOWER_HOLDS`, `WALL_PATH_COST`, `FIRE_DAMAGE`, `COST_GROWTH`, `REPUTATION`, `SELL_REFUND`,
+- `src/logic/`: `balance.ts` (`MAP`, `WALK_SPEED`, `BUILDINGS` (walls have `hp`), `UPGRADE`,
+  `REPAIR_HP`, `TOWER_HOLDS`, `WALL_PATH_COST`, `FIRE_DAMAGE`, `CHECKPOINTS`, `RENOWN`, `COST_GROWTH`, `REPUTATION`,
   `TICKS_PER_SEC`, `ENEMIES`, `ENEMY_AGGRO`, `MAYOR`, `PEASANT`, `WAVES`,
-  `PLUNDER`), `rng.ts`,
+  ), `rng.ts`,
   `types.ts`, `map.ts` (`generateMap`, `hutCenter`, `hutTiles`, `isHut`), `state.ts` (`newGame`, `idlePeasants`), `building.ts`
-  (`buildCost`, `placeError`, `placeBuilding`, `sellBuilding`, `toggleWorkers`), `economy.ts` (`payout`),
-  `progression.ts` (`nextStage`; `combat.ts` `winStage` adds plunder, Reputation, arrivals), `pathing.ts` (`flowField(map, goals[])` 8-dir Dijkstra,
+  (`buildCost`, `placeError`, `placeBuilding`, `toggleWorkers`), `economy.ts` (`payout`),
+  `progression.ts` (`nextStage` refills piles, `earnRenown`; `combat.ts` `winStage` adds kill loot, Reputation, arrivals), `pathing.ts` (`flowField(grid, goals[])` 8-dir Dijkstra,
   `nextTile`, `lineWalkable`, `waypoint` = straight-line shortcut; all take a `Grid` = map + wall
   `costs`, Infinity blocks), `walls.ts` (`wallGrid(s, side)`, `walkGrids` → `Battle.grid`,
   `peasantGrid`, `field`; `hitWall`, `repairWall`, `material`), `waves.ts` (`spawnSchedule`), `scenario.ts` (dev: `scenario(params)`, `asciiBattle`),

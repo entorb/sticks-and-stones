@@ -1,7 +1,16 @@
 import type { GameObjects, Scene } from "phaser"
 import { ENEMIES, MAYOR, PEASANT } from "../logic/balance.ts"
 import type { Battle, Unit } from "../logic/battle.ts"
-import { enemyKey, MAYOR_KEY, PEASANT_KEY, ROCK_KEY, TILE_PX } from "./textures.ts"
+import type { GameState } from "../logic/types.ts"
+import {
+  enemyKey,
+  MAYOR_KEY,
+  PEASANT_KEY,
+  ROCK_KEY,
+  TILE_PX,
+  TOOL_GRIP,
+  TOOL_KEY,
+} from "./textures.ts"
 
 /** The mayor is drawn in front of the hut door, below the hut center (px). */
 const MAYOR_AT_DOOR = 26
@@ -14,6 +23,9 @@ const HIT_TINT = 0xff_60_40
 const HIT_MS = 120
 const DEATH_MS = 300
 const THROW_MS = 90
+/** Tool in hand: offset from the unit sprite (px), scale, raised angle and swing (deg). */
+export const TOOL_HAND = { dx: 9, dy: 4, scale: 0.7, rest: -40, swing: 70 } as const
+const SWING_MS = 90
 const HP_W = 20
 const HP_H = 3
 const HP_Y = 18
@@ -38,10 +50,18 @@ export class BattleView {
   /** Unit sprites by unit id (enemies, peasants, mayor). */
   private readonly units = new Map<number, GameObjects.Image>()
   private readonly rocks = new Map<number, GameObjects.Image>()
+  /** Tool sprites of workers by unit id. */
+  private readonly tools = new Map<number, GameObjects.Image>()
+  /** Tool texture by work building id. */
+  private readonly toolOf = new Map<number, string>()
   private readonly bars: GameObjects.Graphics
 
-  constructor(scene: Scene) {
+  constructor(scene: Scene, s: GameState) {
     this.scene = scene
+    for (const { id, type } of s.buildings) {
+      const key = TOOL_KEY[type]
+      if (key) this.toolOf.set(id, key)
+    }
     this.bars = scene.add.graphics().setDepth(4)
   }
 
@@ -80,6 +100,7 @@ export class BattleView {
         if (look) this.hpBar(img, u.hp, look.max, look.color)
       },
     )
+    this.renderTools(b)
     sync(
       this.rocks,
       b.rocks,
@@ -99,9 +120,41 @@ export class BattleView {
       if (!img) continue
       if (ev.type === "throw")
         this.scene.tweens.add({ targets: img, scaleY: 0.75, duration: THROW_MS, yoyo: true })
+      else if (ev.type === "strike") this.swing(ev.id)
       else if (ev.type === "hit") this.flash(img)
-      else this.fadeOut(ev.id, img)
+      else if (ev.type === "died") this.fadeOut(ev.id, img)
     }
+  }
+
+  /** Workers carry their building's tool (axe, pick) in hand. */
+  private renderTools(b: Battle): void {
+    const armed = b.peasants.filter((p) => p.role === "worker" && this.toolOf.has(p.buildingId))
+    sync(
+      this.tools,
+      armed,
+      (p) =>
+        this.scene.add
+          .image(0, 0, this.toolOf.get(p.buildingId) ?? PEASANT_KEY)
+          .setOrigin(TOOL_GRIP.x, TOOL_GRIP.y)
+          .setScale(TOOL_HAND.scale)
+          .setAngle(TOOL_HAND.rest)
+          .setDepth(3),
+      (tool, p) => {
+        const img = this.units.get(p.id)
+        if (img) tool.setPosition(img.x + TOOL_HAND.dx, img.y + TOOL_HAND.dy)
+      },
+    )
+  }
+
+  private swing(id: number): void {
+    const tool = this.tools.get(id)
+    if (!tool) return
+    this.scene.tweens.add({
+      targets: tool,
+      angle: TOOL_HAND.rest + TOOL_HAND.swing,
+      duration: SWING_MS,
+      yoyo: true,
+    })
   }
 
   private hpBar(img: GameObjects.Image, hp: number, max: number, color: number): void {
@@ -133,6 +186,7 @@ export class BattleView {
   destroy(): void {
     sync(this.units, [], () => undefined as never)
     sync(this.rocks, [], () => undefined as never)
+    sync(this.tools, [], () => undefined as never)
     this.bars.destroy()
   }
 }

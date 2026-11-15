@@ -131,9 +131,6 @@ export const COST_GROWTH = 0.5
  * stage = 1 + floor(reputation / arrivalsPer). Waves scale by stage only. Reset on a lost village. */
 export const REPUTATION = { win: 1, flawless: 2, arrivalsPer: 3 } as const
 
-/** Share of the building cost refunded on sale (rounded down). */
-export const SELL_REFUND = 0.5
-
 /** Simulation rate. */
 export const TICKS_PER_SEC = 10
 

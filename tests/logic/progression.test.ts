@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { BUILDINGS, CHECKPOINTS, ENEMIES, RENOWN, TICKS_PER_SEC } from "../../src/logic/balance.ts"
+import {
+  BUILDINGS,
+  CHECKPOINTS,
+  ENEMIES,
+  RENOWN,
+  REPUTATION,
+  TICKS_PER_SEC,
+} from "../../src/logic/balance.ts"
 import { placeBuilding } from "../../src/logic/building.ts"
 import { startWave, stepBattle, winStage } from "../../src/logic/combat.ts"
 import { earnRenown } from "../../src/logic/progression.ts"
@@ -46,5 +53,35 @@ describe("rocks, loot, renown", () => {
     expect(s.stage).toBe(6)
     expect(s.peasants).toBe(CHECKPOINTS[1].peasants)
     expect(s.reputation).toBe(0)
+  })
+
+  it("a win gives Reputation (more if flawless) and 1 + floor(rep / arrivalsPer) peasants", () => {
+    const s = field()
+    s.reputation = REPUTATION.arrivalsPer - 1
+    const won = startWave(s)
+    won.spawns = []
+    stepBattle(s, won, TICKS_PER_SEC)
+    expect(won.flawless).toBe(false)
+    expect(winStage(s, won)).toMatchObject({ reputation: REPUTATION.win, peasants: 2 })
+    expect(s).toMatchObject({ stage: 2, peasants: 4, reputation: REPUTATION.arrivalsPer })
+    s.stage = BUILDINGS.palisade.unlockStage
+    expect(placeBuilding(s, "palisade", 3, 0)).toBeNull()
+    const flawless = startWave(s)
+    flawless.spawns = []
+    stepBattle(s, flawless, TICKS_PER_SEC)
+    expect(winStage(s, flawless).reputation).toBe(REPUTATION.flawless)
+    expect(s.reputation).toBe(REPUTATION.arrivalsPer + REPUTATION.flawless)
+  })
+
+  it("peasants at an empty pile switch to the next pile with rocks", () => {
+    const s = field()
+    expect(placeBuilding(s, "rockPile", 6, 5)).toBeNull()
+    const [first, second] = s.buildings
+    if (first) first.rocks = 0
+    const b = startWave(s)
+    b.spawns = [0, 20, 40].map((tick) => ({ tick, kind: "raider" as const }))
+    while (b.result === "running" && b.tick < 2000) stepBattle(s, b, TICKS_PER_SEC)
+    expect(b.result).toBe("won")
+    expect(second?.rocks).toBeLessThan(BUILDINGS.rockPile.rocks ?? 0)
   })
 })

@@ -60,8 +60,10 @@ export class UIScene extends Scene {
     this.add.rectangle(0, 0, width, HUD_H, PANEL, 0.85).setOrigin(0).setInteractive()
     this.hud = this.add.text(PAD * 2, HUD_H / 2, "", {
       fontFamily: FONT,
-      fontSize: width < NARROW ? "13px" : "15px",
+      fontSize: width < NARROW ? "12px" : "15px",
       color: TEXT,
+      // phones: two lines fit in HUD_H
+      wordWrap: { width: width - PAD * 4 },
     })
     this.hud.setOrigin(0, 0.5)
     this.bar = this.add.container()
@@ -101,7 +103,6 @@ export class UIScene extends Scene {
     this.shown = unlocked.length
     const items: [Tool | "defend", string][] = [
       ...unlocked.map((t): [Tool, string] => [t, NAMES[t]]),
-      ["sell", "Sell\n50% back"],
       ["defend", "Defend!"],
     ]
     const cols = Math.min(items.length, Math.floor((width - PAD) / (BTN_MIN_W + PAD)))
@@ -156,8 +157,9 @@ export class UIScene extends Scene {
     const people = b
       ? `Foes ${b.enemies.length + b.spawns.length}`
       : `Idle ${idlePeasants(s)}/${s.peasants}`
+    const renown = (this.registry.get(REG.profile) as Profile).renown
     this.hud.setText(
-      `Stage ${s.stage} · Rep ${s.reputation} · Renown ${(this.registry.get(REG.profile) as Profile).renown} · Wood ${s.res.wood} · Stone ${s.res.stone} · Mayor ${mayor} · ${people}`,
+      `Stage ${s.stage} · Rep ${s.reputation} · Renown ${renown} · Wood ${s.res.wood} · Stone ${s.res.stone} · Mayor ${mayor} · ${people}`,
     )
     const tool = this.registry.get(REG.tool) as Tool
     for (const btn of this.buttons) {
