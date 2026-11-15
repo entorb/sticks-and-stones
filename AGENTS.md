@@ -45,7 +45,10 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
 ## Layout
 
 - `src/main.ts`: Phaser config (`Scale.RESIZE`, portrait + landscape), dev `globalThis.__game`.
-- `src/scenes/`: `BootScene` → `GameScene`.
-- `src/logic/`: `balance.ts`, `rng.ts`.
+- `src/scenes/`: `BootScene` (builds textures) → `GameScene` (renders map).
+  `textures.ts`: procedural tile art (`TILE_PX`, texture keys). `cameraControls.ts`: drag pan,
+  pinch + wheel zoom around the pointer, min zoom = whole map fits, start zoom = screen covered.
+- `src/logic/`: `balance.ts`, `rng.ts`, `types.ts` (`Terrain`, `GameMap`), `map.ts`
+  (`generateMap(seed)`, `tileAt`, `reachableFromKeep`).
 - `tests/logic/` (Vitest, `vitest.config.ts`), `tests/e2e/` (Playwright, `playwright.config.ts`,
   runs against `pnpm build && pnpm preview`, desktop + 375×667 phone).

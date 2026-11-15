@@ -1,4 +1,5 @@
 import { Scene } from "phaser"
+import { makeTextures } from "./textures.ts"
 
 export class BootScene extends Scene {
   constructor() {
@@ -6,6 +7,7 @@ export class BootScene extends Scene {
   }
 
   create(): void {
+    makeTextures(this)
     this.scene.start("Game")
   }
 }
