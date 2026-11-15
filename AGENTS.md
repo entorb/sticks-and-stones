@@ -17,6 +17,29 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
 - Update this file after research or when a gotcha cost time.
 - Git commits: subject line only (`<type>: <Description>`), never a Claude `Co-Authored-By` trailer.
 
+## Current status (update at the end of each session)
+
+- Done: M0 scaffold, M1 map + camera, M2 buildings + economy, M3 enemies + defense, plus owner
+  changes on top of M3: 2×2 mayor's hut with a fighting mayor (replaces the keep), free unit
+  movement, enemies attack all peasants (workers, throwers, mayor). See `CHANGELOG.md`,
+  `DECISIONS.md`.
+- **Paused by the owner** until the game is up and running: unit tests and cspell. 17 tests in
+  `tests/logic/` fail because they still assume the old 1-tile/keep layout, 4-direction pathing
+  and `flowField(map, goal)` / `throwers` APIs. Don't fix them unless asked; when asked, rewrite
+  them against the current logic (hut is `MAP.hutSize`² at `map.hut`, `flowField(map, goals[])`,
+  `Battle.peasants`/`mayor`, result `lost` = mayor dead). Still keep lint, typecheck of `src/`,
+  knip and e2e green before each commit:
+  `scripts/chk_js_format.sh && pnpm exec tsc --noEmit | grep -v "^tests/logic"; scripts/chk_js_e2e.sh && scripts/chk_js_dead.sh && scripts/chk_pre-commit.sh`.
+- Next: M4 (walls, gate, stone wall, tower, wall HP/breaking, repairs, unlocks, stages 1–10 with
+  torchbearer, armored bandit, ram, mini bosses at 5 and 10). Walls must block units, so free
+  movement (`waypoint`/`lineWalkable`) and enemy targeting need to treat walls as obstacles with
+  high flow-field cost and as attack targets.
+- Owner workflow: plays the dev build, reports issues in short messages, says "continue" for the
+  next milestone and "commit" when happy. Review screenshots yourself before reporting.
+- Handy debug scripts (gitignored, may be gone): `tmp/debug-shots.mjs` (place piles, run a wave,
+  log + screenshots), `tmp/debug-sim.mjs` (headless `simulateWave` on several seeds in the
+  browser). Both need `pnpm dev` running.
+
 ## Architecture rules
 
 - `src/logic/`: pure TS, **no Phaser imports**, all game rules. Deterministic: use
@@ -50,19 +73,22 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
 - `src/main.ts`: Phaser config (`Scale.RESIZE`, portrait + landscape), dev `globalThis.__game`.
 - `src/scenes/`: `BootScene` (builds textures) → `GameScene` (map, buildings, taps) + `UIScene`
   (HUD top, build bar bottom, toasts; restarts on resize). They share `GameState` and the selected
-  tool via `registry` (`shared.ts` `REG`) and signal via `game.events` (`EV.changed`, `EV.toast`).
+  tool via `registry` (`shared.ts` `REG`) and signal via `game.events` (`EV.changed`, `EV.toast`, `EV.defend`; `REG.battle` = running battle or null).
   Interactive UI panels block taps to the map (Phaser `globalTopOnly`).
   Defend! → `GameScene` runs the battle in fixed ticks (`TICKS_PER_SEC`) in `update()`;
   `battleView.ts` draws all units by id (interpolated `px/py` → `x/y`, HP bars) and rocks
   (`Battle.rocks`, arc). Build phase: dotted enemy route + rock pile range circle.
-  `textures.ts`: procedural art (`TILE_PX`, texture keys). `cameraControls.ts`: viewport between
+  `textures.ts`: procedural art (`TILE_PX`, texture keys; hut 64 px, mayor drawn at the door). `cameraControls.ts`: viewport between
   the UI bars (`HUD_H`, `BAR_H`), drag pan, pinch + wheel zoom, tap callback (`TAP_SLOP`).
-- `src/logic/`: `balance.ts` (`MAP`, `WALK_SPEED`, `START`, `BUILDINGS`, `SELL_REFUND`), `rng.ts`,
+- `src/logic/`: `balance.ts` (`MAP`, `WALK_SPEED`, `START`, `BUILDINGS`, `SELL_REFUND`,
+  `TICKS_PER_SEC`, `ENEMIES`, `ENEMY_AGGRO`, `MAYOR`, `PEASANT`, `ROCK_PILE_SLOTS`, `WAVES`,
+  `PLUNDER`), `rng.ts`,
   `types.ts`, `map.ts` (`generateMap`, `hutCenter`, `hutTiles`, `isHut`), `state.ts` (`newGame`, `idlePeasants`), `building.ts`
   (`placeError`, `placeBuilding`, `sellBuilding`, `toggleWorkers`), `economy.ts` (`payout`),
-  `progression.ts` (`nextStage`), `pathing.ts` (`flowField(map, goal)` 8-dir Dijkstra,
+  `progression.ts` (`nextStage`), `pathing.ts` (`flowField(map, goals[])` 8-dir Dijkstra,
   `nextTile`, `lineWalkable`, `waypoint` = straight-line shortcut), `waves.ts` (`spawnSchedule`),
-  `battle.ts` (unit types `Enemy`/`Peasant`/mayor, `moveToward`, `strike`), `defenders.ts`
+  `battle.ts` (unit types `Enemy`/`Peasant`/mayor `Unit` with id 0, `moveToward`, `strike`,
+  `reach` = melee distance, mayor counted from the hut wall), `defenders.ts`
   (workers, walking throwers, rocks, mayor), `combat.ts` (`startWave`, `stepBattle` = enemies,
   `simulateWave`, `winStage`).
 - `tests/logic/` (Vitest, `vitest.config.ts`; `helpers.ts` `stateFrom(rows)` builds a state from an
