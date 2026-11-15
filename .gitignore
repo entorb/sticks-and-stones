@@ -1,0 +1,12 @@
+!.vscode/extensions.json
+*.local
+*.sw?
+.DS_Store
+.vscode/*
+/dist/
+/node_modules/
+/playwright-report/
+/src/dist/
+/test-results/
+/tmp/
+cspell-words-missing.txt

@@ -1,0 +1,103 @@
+---
+name: Check Code
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 5 * * 0'  # Sunday 05:00 UTC, audit alert
+  push:
+    branches: [main, renovate/**]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1  # latest only
+
+      - name: Run prek pre-commit
+        uses: j178/prek-action@44924fe9ef4a6f88253c4b6b1bf11c689d3ce53d  # v3.1.0
+        with:
+          extra-args: --all-files --quiet
+
+      - name: Run CSpell
+        uses: streetsidesoftware/cspell-action@ce1816e4ce36532956ac6e983737392774b6e169  # v9.2.0
+        with:
+          files: '**/*'
+          incremental_files_only: false
+
+  node:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1  # latest only
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Prepare
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run js format Biome
+        run: pnpm exec biome ci .
+
+      - name: Run js test Vitest
+        run: pnpm exec vitest run
+
+      - name: Run js type check
+        run: pnpm exec tsc --noEmit
+
+      - name: Run js build
+        run: pnpm run build
+
+      - name: Run js e2e Playwright
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          pnpm exec playwright test
+
+      - name: Run js dead code Knip
+        run: pnpm knip
+
+      - name: Run js audit
+        run: pnpm audit --prod
+
+  all-checks-passed:
+    if: always()
+    needs: [core, node]
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Check job results
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]] || \
+             [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more required jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "All required jobs passed."
