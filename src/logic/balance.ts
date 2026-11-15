@@ -34,8 +34,16 @@ export const WALK_SPEED: Record<Terrain, number> = {
   [Terrain.Water]: 0,
 }
 
-/** New village at checkpoint 1. */
-export const START = { wood: 50, stone: 20, peasants: 4 } as const
+/** A lost village is refounded at the mayor's highest checkpoint with its start package. */
+export const CHECKPOINTS = [
+  { stage: 1, wood: 50, stone: 20, peasants: 4 },
+  { stage: 6, wood: 120, stone: 60, peasants: 8 },
+  { stage: 11, wood: 200, stone: 150, peasants: 12 },
+  { stage: 16, wood: 300, stone: 250, peasants: 16 },
+] as const
+
+/** The mayor's permanent Renown: perStage × stage per won stage, bonus for a new checkpoint. */
+export const RENOWN = { perStage: 1, checkpoint: 20 } as const
 
 export const BUILDINGS: Record<BuildingType, BuildingSpec> = {
   woodcutter: {
@@ -58,15 +66,70 @@ export const BUILDINGS: Record<BuildingType, BuildingSpec> = {
     produces: { wood: 0, stone: 0 },
     near: null,
     unlockStage: 1,
+    rocks: 25,
+  },
+  palisade: {
+    cost: { wood: 5, stone: 0 },
+    workers: 0,
+    produces: { wood: 0, stone: 0 },
+    near: null,
+    unlockStage: 5,
+    hp: 40,
+  },
+  gate: {
+    cost: { wood: 15, stone: 0 },
+    workers: 0,
+    produces: { wood: 0, stone: 0 },
+    near: null,
+    unlockStage: 5,
+    hp: 40,
+    peasantsPass: true,
+  },
+  stoneWall: {
+    cost: { wood: 0, stone: 10 },
+    workers: 0,
+    produces: { wood: 0, stone: 0 },
+    near: null,
+    unlockStage: 10,
+    hp: 150,
+    peasantsPass: true,
+    rangeBonus: 2,
+  },
+  tower: {
+    cost: { wood: 0, stone: 30 },
+    workers: 0,
+    produces: { wood: 0, stone: 0 },
+    near: null,
+    unlockStage: 10,
+    hp: 200,
+    peasantsPass: true,
+    rangeBonus: 3,
+    rocks: 25,
   },
 }
+
+/** Building a stone wall on a palisade upgrades it in place for this price. */
+export const UPGRADE = { from: "palisade", to: "stoneWall", cost: { wood: 0, stone: 8 } } as const
+
+/** Wall repair in the build phase: 1 wood (wooden walls) or stone per this many HP. */
+export const REPAIR_HP = 10
+
+/** Peasants per tower; they stand on it and throw with its range bonus. */
+export const TOWER_HOLDS = 3
+
+/** Enemy flow field: a wall tile costs this many tiles of walking per HP, so enemies walk around
+ * unless the detour is longer than breaking through. */
+export const WALL_PATH_COST = 0.25
+
+/** Fire (torchbearers) multiplies damage to wooden walls. */
+export const FIRE_DAMAGE = 2
 
 /** Each building of a type already standing adds this share of the base cost to the next one. */
 export const COST_GROWTH = 0.5
 
-/** Reputation per won stage; new peasants per stage = 1 + floor(reputation / arrivalsPer);
- * enemies per wave × (1 + enemyGrowth × reputation). */
-export const REPUTATION = { win: 1, arrivalsPer: 2, enemyGrowth: 0.1 } as const
+/** Village Reputation per won stage (flawless = walls stood and took no damage); new peasants per
+ * stage = 1 + floor(reputation / arrivalsPer). Waves scale by stage only. Reset on a lost village. */
+export const REPUTATION = { win: 1, flawless: 2, arrivalsPer: 3 } as const
 
 /** Share of the building cost refunded on sale (rounded down). */
 export const SELL_REFUND = 0.5
@@ -75,7 +138,52 @@ export const SELL_REFUND = 0.5
 export const TICKS_PER_SEC = 10
 
 export const ENEMIES: Record<EnemyKind, EnemySpec> = {
-  raider: { hp: 10, speed: 1, damage: 2, cooldown: 10, range: 1.2 },
+  raider: {
+    hp: 10,
+    speed: 1,
+    damage: 2,
+    cooldown: 10,
+    range: 1.2,
+    wallDamage: 2,
+    fire: false,
+    preys: true,
+    loot: { wood: 1, stone: 1 },
+  },
+  /** Fast, burns wooden walls. */
+  torchbearer: {
+    hp: 8,
+    speed: 1.6,
+    damage: 2,
+    cooldown: 10,
+    range: 1.2,
+    wallDamage: 3,
+    fire: true,
+    preys: true,
+    loot: { wood: 2, stone: 0 },
+  },
+  armored: {
+    hp: 28,
+    speed: 0.8,
+    damage: 3,
+    cooldown: 12,
+    range: 1.2,
+    wallDamage: 3,
+    fire: false,
+    preys: true,
+    loot: { wood: 1, stone: 2 },
+  },
+  /** Slow, tough, ignores peasants, breaks walls fast. */
+  ram: {
+    hp: 70,
+    speed: 0.5,
+    damage: 4,
+    cooldown: 20,
+    range: 1.2,
+    wallDamage: 25,
+    fire: false,
+    preys: false,
+    loot: { wood: 0, stone: 10 },
+  },
 }
 
 /** Enemies leave their path to attack a peasant or the mayor this close (tiles). */
@@ -103,6 +211,8 @@ export const PEASANT = {
   throwCooldown: 10,
   /** Rock flight speed, tiles per second. */
   rockSpeed: 8,
+  /** Peasants in a tower stand this close to its center (tiles). */
+  towerReach: 0.1,
   /** Peasants pick up a rock this close to the pile center, standing next to it (tiles). */
   pickupReach: 0.7,
   /** Peasants with a rock walk toward enemies this close to their pile (tiles). */
@@ -112,17 +222,19 @@ export const PEASANT = {
   toolDamage: 2,
   /** Ticks between tool hits. */
   toolCooldown: 10,
-  /** One stone from the stockpile per this many throws. */
-  throwsPerStone: 2,
 } as const
 
-/** Waves per stage (index 0 = stage 1); later stages repeat the last entry. */
+/** Waves per stage (index 0 = stage 1); later stages repeat the last entry. Mini bosses at 5
+ * (large mob) and 10 (rams); the stage after a boss is a breather. */
 export const WAVES: WaveSpec[] = [
   { enemies: { raider: 5 }, interval: 20 },
   { enemies: { raider: 7 }, interval: 18 },
   { enemies: { raider: 9 }, interval: 16 },
   { enemies: { raider: 12 }, interval: 14 },
+  { enemies: { raider: 24 }, interval: 6 },
+  { enemies: { raider: 8, torchbearer: 4 }, interval: 14 },
+  { enemies: { raider: 9, torchbearer: 5, armored: 2 }, interval: 13 },
+  { enemies: { raider: 10, torchbearer: 6, armored: 3 }, interval: 12 },
+  { enemies: { raider: 11, torchbearer: 7, armored: 5 }, interval: 11 },
+  { enemies: { ram: 2, armored: 6, raider: 10, torchbearer: 4 }, interval: 12 },
 ]
-
-/** Loot for a won stage. */
-export const PLUNDER = { wood: 10, stone: 5 } as const

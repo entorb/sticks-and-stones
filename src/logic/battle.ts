@@ -1,6 +1,6 @@
 import { MAYOR } from "./balance.ts"
-import { walkSpeed } from "./pathing.ts"
-import type { EnemyKind, GameMap, Point } from "./types.ts"
+import { type Grid, walkSpeed } from "./pathing.ts"
+import type { EnemyKind, GameMap, Point, Resources } from "./types.ts"
 import type { Spawn } from "./waves.ts"
 
 /** A moving unit; positions in tile units (tile centers are integers). */
@@ -26,6 +26,10 @@ export interface Peasant extends Unit {
   /** The rock pile it fetches rocks from (its start point if there is no pile). */
   home: Point
   buildingId: number
+  /** Rock pile or tower it takes rocks from; -1 = none. */
+  pileId: number
+  /** Picks up rocks this close to `home` (beside a pile, on a tower). */
+  homeReach: number
   /** Flow field toward `home`; empty = no pile, the peasant stays put. */
   field: number[]
   /** Carries a rock, ready to throw. */
@@ -43,23 +47,30 @@ export interface Rock {
   total: number
 }
 
-/** Things that happened this tick, for rendering. Ids are unit ids. */
+/** Things that happened this tick, for rendering. Ids are unit ids, building ids for "wall". */
 export type BattleEvent =
+  | { type: "wall"; id: number }
   | { type: "throw"; id: number }
   | { type: "hit"; id: number }
   | { type: "died"; id: number }
+  | { type: "empty"; id: number }
 
 export interface Battle {
   tick: number
-  /** Flow field toward the hut. */
+  /** Flow field toward the hut over `grid`. */
   field: number[]
+  /** The map with walls as enemies and as peasants walk it. */
+  grid: Grid
+  peasantGrid: Grid
+  /** Walls stood at the start and none was hit yet. */
+  flawless: boolean
   spawns: Spawn[]
   enemies: Enemy[]
   peasants: Peasant[]
   mayor: Unit
   rocks: Rock[]
-  /** Throws left before the next stone is taken from the stockpile. */
-  throwsLeft: number
+  /** Plunder from kills so far, paid on a win. */
+  loot: Resources
   nextId: number
   result: "running" | "won" | "lost"
   events: BattleEvent[]

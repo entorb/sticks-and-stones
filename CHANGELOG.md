@@ -61,3 +61,16 @@
   won stage; waves grow 10% per point.
 - Rocks cost 1 stone per 2 throws (was 5).
 - Each extra building of a type costs 50% more of its base cost; build bar shows the current price.
+
+## M4 Walls and stages 1–10
+
+- Palisade and gate (stage 5), stone wall and tower (stage 10). Walls have HP, block enemies and
+  show an HP bar when damaged. Enemies walk around walls when the detour is short, else break
+  through; the build phase route preview shows it.
+- Gates let peasants through; stone walls (+2) and towers (+3, 3 defenders) extend throw range.
+- Upgrade: build a stone wall on a palisade (8 stone). Repair: tap a damaged wall.
+- Flawless win (walls untouched) gives +2 Reputation.
+- New enemies: torchbearer (fast, burns wood), armored bandit, ram (wall breaker). Waves for
+  stages 1–10 with mini bosses at 5 (mob) and 10 (rams).
+- Build bar shows unlocked buildings only and wraps into two rows on phones.
+- Dev: `palisade=r` / `stoneWall=r` params build a wall ring around the hut.

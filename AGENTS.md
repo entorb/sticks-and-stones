@@ -11,7 +11,7 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
 - Missing design detail: pick the simplest option that fits PLAN.md, note it in `DECISIONS.md`.
 - Each milestone: entry in `CHANGELOG.md`, all checks green, screenshot reviewed.
 - Debug logic headless first (0.1 s, no browser): `node scripts/sim.ts seed=3 piles=2
-  woodcutters=1 stone=0 every=50` prints text frames (`asciiBattle`: map + units, legend in
+  woodcutters=1 stone=0 palisade=3 every=50` prints text frames (`asciiBattle`: map + units, legend in
   `logic/scenario.ts`). Node runs `.ts` natively; own scripts in `tmp/*.ts` import `../src/logic/*.ts`.
   Same params as dev URL: `?seed=3&piles=2&speed=5&defend` (`speed` = tick multiplier, `defend` =
   start the wave at once). Use screenshots only for visuals.
@@ -30,8 +30,9 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
   (fetch rocks beside the nearest pile, close in, throw; workers also melee with tools); economy
   spec (Reputation + arrivals, waves +10%/rep, ammo 1 stone per 2 rocks, rising build cost +50%
   per copy); dev tools (`scripts/sim.ts`, dev URL params). See `CHANGELOG.md`, `DECISIONS.md`.
-- Uncommitted at handover: everything since `bd6aec5` (all-peasants defense, tool melee, dev
-  tools, economy). Ask the owner before committing.
+- M4 done (walls, gate, stone wall, tower, repair, upgrade, flawless, torchbearer/armored/ram,
+  waves 1–10), uncommitted. Ask the owner before committing. `tests/logic/walls.test.ts` is the
+  only current unit test file (passes).
 - Open balance questions (owner to decide, see last economy projection): stone runs dry stages 2–7
   (options: quarry +15, or 1 stone per 3 rocks); peasants snowball (44 vs 25 enemies at stage 12;
   M4 waves must outgrow arrivals, or arrivals `floor(rep / 3)`); wood surplus is for M4 walls.
@@ -42,10 +43,10 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
   `Battle.peasants`/`mayor`, result `lost` = mayor dead). Still keep lint, typecheck of `src/`,
   knip and e2e green before each commit:
   `scripts/chk_js_format.sh && pnpm exec tsc --noEmit | grep -v "^tests/logic"; scripts/chk_js_e2e.sh && scripts/chk_js_dead.sh && scripts/chk_pre-commit.sh`.
-- Next: M4 (walls, flawless win = +2 Reputation once walls exist, gate, stone wall, tower, wall HP/breaking, repairs, unlocks, stages 1–10 with
-  torchbearer, armored bandit, ram, mini bosses at 5 and 10). Walls must block units, so free
-  movement (`waypoint`/`lineWalkable`) and enemy targeting need to treat walls as obstacles with
-  high flow-field cost and as attack targets.
+- Next: M5 (balance: sim says stage 5 mob and stage 10 rams beat 4–8 peasants with a palisade
+  ring; a scripted build must survive stages 1–10).
+- Headless Chromium runs ticks slowly: screenshot a battle with `waitForFunction` on
+  `scene.getScene("Game").battle.tick >= N`, not a fixed timeout (`tmp/walls-tick.mjs`).
 - Owner workflow: plays the dev build, reports issues in short messages, says "continue" for the
   next milestone and "commit" when happy. Review screenshots yourself before reporting.
 - Handy debug scripts (gitignored, may be gone): `tmp/econ.ts <seed>` (Node, 12-stage economy
@@ -72,13 +73,24 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
   (add intentional words to `cspell-words.txt`).
 - Screenshots: `pnpm e2e` writes `tmp/screens/smoke-{desktop,phone}.png`. With `pnpm dev`
   running, `node scripts/gen_screen_exports.mjs` writes PNG + text/hit-target snapshot per screen
-  (add new screens to `SCREENS`). Chromium: `pnpm exec playwright install chromium`.
+  (add new screens to `SCREENS`). Chromium: `pnpm exec playwright install --only-shell chromium` (headless shell only, never other browsers).
 - Deploy: `scripts/deploy.sh` (checks, build, rsync to `html/sticks-and-stones/`; vite `base` is
   `/sticks-and-stones/`).
 - SonarCloud: `scripts/get_sonar_issues.sh` refreshes `tmp/sonar.json`. Avoid up front: nested
   template literals, nested ternaries, comma operator in arrows, `void` on non-Promise, cognitive
   complexity > 15 (split into helpers), `for (let i...)` over simple iteration (use `for-of`),
   > 7 function params (options object), consecutive `push()` calls, `await` in loops, `TODO` comments.
+- Biome (`scripts/chk_js_format.sh`; `×` errors fail, `!` warnings must not grow, `i` infos are
+  tolerated in existing code). Avoid up front:
+  - cognitive complexity > 15 (error): split a loop body into a helper (`peasantMoves` pattern).
+  - > 4 function params (`useMaxParams`): pass an options object or the owner (`b: Battle`).
+  - `noUnnecessaryConditions`: no `?? fallback` / `?.` on values the types say are defined.
+  - `noShadow`: don't reuse an outer name for a callback param (`b` vs `b: Battle`, `s`).
+  - In new code prefer `+= 1` over `++`, `if` blocks over `continue`, destructuring
+    (`const { x } = p`), `.at(-1)` over `[a.length - 1]`.
+- TS `lib` is ES2020: no `toSorted`, `findLast`, `Object.groupBy`; use `[...a].sort()` etc.
+- Keep these lists current: when a Biome, tsc or Sonar finding not listed here costs a fix
+  round, add a one-line "avoid up front" rule for it in the same session.
 
 ## Layout
 
@@ -92,13 +104,16 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
   (`Battle.rocks`, arc). Build phase: dotted enemy route + rock pile range circle.
   `textures.ts`: procedural art (`TILE_PX`, texture keys; hut 64 px, mayor drawn at the door). `cameraControls.ts`: viewport between
   the UI bars (`HUD_H`, `BAR_H`), drag pan, pinch + wheel zoom, tap callback (`TAP_SLOP`).
-- `src/logic/`: `balance.ts` (`MAP`, `WALK_SPEED`, `START`, `BUILDINGS`, `COST_GROWTH`, `REPUTATION`, `SELL_REFUND`,
+- `src/logic/`: `balance.ts` (`MAP`, `WALK_SPEED`, `START`, `BUILDINGS` (walls have `hp`), `UPGRADE`,
+  `REPAIR_HP`, `TOWER_HOLDS`, `WALL_PATH_COST`, `FIRE_DAMAGE`, `COST_GROWTH`, `REPUTATION`, `SELL_REFUND`,
   `TICKS_PER_SEC`, `ENEMIES`, `ENEMY_AGGRO`, `MAYOR`, `PEASANT`, `WAVES`,
   `PLUNDER`), `rng.ts`,
   `types.ts`, `map.ts` (`generateMap`, `hutCenter`, `hutTiles`, `isHut`), `state.ts` (`newGame`, `idlePeasants`), `building.ts`
   (`buildCost`, `placeError`, `placeBuilding`, `sellBuilding`, `toggleWorkers`), `economy.ts` (`payout`),
   `progression.ts` (`nextStage`; `combat.ts` `winStage` adds plunder, Reputation, arrivals), `pathing.ts` (`flowField(map, goals[])` 8-dir Dijkstra,
-  `nextTile`, `lineWalkable`, `waypoint` = straight-line shortcut), `waves.ts` (`spawnSchedule`), `scenario.ts` (dev: `scenario(params)`, `asciiBattle`),
+  `nextTile`, `lineWalkable`, `waypoint` = straight-line shortcut; all take a `Grid` = map + wall
+  `costs`, Infinity blocks), `walls.ts` (`wallGrid(s, side)`, `walkGrids` → `Battle.grid`,
+  `peasantGrid`, `field`; `hitWall`, `repairWall`, `material`), `waves.ts` (`spawnSchedule`), `scenario.ts` (dev: `scenario(params)`, `asciiBattle`),
   `battle.ts` (unit types `Enemy`/`Peasant`/mayor `Unit` with id 0, `moveToward`, `strike`,
   `reach` = melee distance, mayor counted from the hut wall), `defenders.ts`
   (all peasants fetch rocks at the nearest pile and throw, rocks, mayor), `combat.ts` (`startWave`, `stepBattle` = enemies,

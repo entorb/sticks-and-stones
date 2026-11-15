@@ -1,15 +1,16 @@
-import { START } from "./balance.ts"
+import { CHECKPOINTS } from "./balance.ts"
 import { generateMap } from "./map.ts"
 import type { Building, GameMap, GameState } from "./types.ts"
 
-/** New village at stage 1 with the start package. */
-export function newGame(seed: number, map: GameMap = generateMap(seed)): GameState {
+/** New village at a checkpoint stage (else stage 1) with its start package; Reputation 0. */
+export function newGame(seed: number, map: GameMap = generateMap(seed), checkpoint = 1): GameState {
+  const start = CHECKPOINTS.find((c) => c.stage === checkpoint) ?? CHECKPOINTS[0]
   return {
     seed,
     map,
-    stage: 1,
-    res: { wood: START.wood, stone: START.stone },
-    peasants: START.peasants,
+    stage: start.stage,
+    res: { wood: start.wood, stone: start.stone },
+    peasants: start.peasants,
     reputation: 0,
     buildings: [],
     nextId: 1,

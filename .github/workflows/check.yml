@@ -78,7 +78,7 @@ jobs:
 
       - name: Run js e2e Playwright
         run: |
-          pnpm exec playwright install --with-deps chromium
+          pnpm exec playwright install --with-deps --only-shell chromium
           pnpm exec playwright test
 
       - name: Run js dead code Knip

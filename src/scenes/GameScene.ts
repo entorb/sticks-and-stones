@@ -11,11 +11,21 @@ import {
 import { startWave, stepBattle, winStage } from "../logic/combat.ts"
 import { hutCenter, hutTiles } from "../logic/map.ts"
 import { flowField, lineWalkable, waypoint } from "../logic/pathing.ts"
+import { earnRenown } from "../logic/progression.ts"
 import { scenario } from "../logic/scenario.ts"
 import { buildingAt, newGame } from "../logic/state.ts"
-import { type BuildingType, type GameState, type Point, Terrain } from "../logic/types.ts"
+import {
+  type Building,
+  type BuildingType,
+  type GameState,
+  type Point,
+  type Profile,
+  Terrain,
+} from "../logic/types.ts"
+import { isWall, material, repairWall, wallGrid } from "../logic/walls.ts"
 import { BattleView } from "./battleView.ts"
 import { addCameraControls } from "./cameraControls.ts"
+import { loadProfile, saveProfile } from "./profile.ts"
 import { BAR_H, EV, HUD_H, REG, type Tool } from "./shared.ts"
 import { buildingKey, GRASS_ALT, HUT_KEY, SPAWN_KEY, TERRAIN_KEY, TILE_PX } from "./textures.ts"
 
@@ -30,6 +40,9 @@ const PATH_DOT = 3
 /** Tiles between path dots. */
 const PATH_GAP = 0.8
 const MAX_PATH_LEGS = 100
+const WALL_HP_W = 26
+const WALL_HP_H = 4
+const WALL_HP_COLOR = 0xe8_b8_3a
 
 const ERROR_TEXT: Record<PlaceError, string> = {
   locked: "Not unlocked yet",
@@ -45,6 +58,7 @@ const NEAR_TEXT: Partial<Record<BuildingType, string>> = {
 
 export class GameScene extends Scene {
   private state!: GameState
+  private profile!: Profile
   private buildingLayer!: GameObjects.Container
   private hover!: GameObjects.Graphics
   private path!: GameObjects.Graphics
@@ -61,7 +75,10 @@ export class GameScene extends Scene {
     // dev only: ?seed=3&stage=2&piles=2&woodcutters=1&stone=0&speed=5&defend (see scenario.ts)
     const dev = import.meta.env.DEV ? new URLSearchParams(location.search) : null
     this.tickMs = TICK_MS / Number(dev?.get("speed") ?? 1)
-    this.state = dev?.size ? scenario(dev) : newGame(data.seed ?? Date.now())
+    this.profile = (this.registry.get(REG.profile) as Profile | undefined) ?? loadProfile()
+    const seed = data.seed ?? Date.now()
+    this.state = dev?.size ? scenario(dev) : newGame(seed, undefined, this.profile.checkpoint)
+    this.registry.set(REG.profile, this.profile)
     this.registry.set(REG.state, this.state)
     this.registry.set(REG.tool, null)
     this.registry.set(REG.battle, null)
@@ -110,13 +127,14 @@ export class GameScene extends Scene {
   /** Dotted enemy route from each spawn to the hut (build phase only), as enemies walk it. */
   private drawPath(): void {
     const { map } = this.state
-    const field = flowField(map, hutTiles(map))
+    const grid = wallGrid(this.state, "enemy")
+    const field = flowField(grid, hutTiles(map))
     const hut = hutCenter(map)
     this.path.clear().fillStyle(PATH_COLOR, PATH_ALPHA)
     for (const s of map.spawns) {
       let pos: Point = s
       for (let n = 0; n < MAX_PATH_LEGS && dist(pos, hut) > 0; n++) {
-        const next = lineWalkable(map, pos, hut) ? hut : waypoint(map, field, pos)
+        const next = lineWalkable(grid, pos, hut) ? hut : waypoint(grid, field, pos)
         if (!next) break
         const steps = Math.ceil(dist(pos, next) / PATH_GAP)
         for (let k = 1; k <= steps; k++) {
@@ -129,13 +147,22 @@ export class GameScene extends Scene {
     }
   }
 
+  /** Buildings (unstaffed ones faded) and HP bars of damaged walls. */
   private drawBuildings(): void {
     this.buildingLayer.removeAll(true)
+    const bars = this.add.graphics()
     for (const b of this.state.buildings) {
-      const staffed = b.workers >= BUILDINGS[b.type].workers
+      const spec = BUILDINGS[b.type]
+      const staffed = b.workers >= spec.workers && b.rocks !== 0
       const img = this.add.image(b.x * TILE_PX, b.y * TILE_PX, buildingKey(b.type)).setOrigin(0)
       this.buildingLayer.add(img.setAlpha(staffed ? 1 : UNSTAFFED_ALPHA))
+      if (b.hp === undefined || spec.hp === undefined || b.hp >= spec.hp) continue
+      const x = b.x * TILE_PX + (TILE_PX - WALL_HP_W) / 2
+      const y = b.y * TILE_PX + 2
+      bars.fillStyle(0x00_00_00, 0.6).fillRect(x - 1, y - 1, WALL_HP_W + 2, WALL_HP_H + 2)
+      bars.fillStyle(WALL_HP_COLOR).fillRect(x, y, (WALL_HP_W * b.hp) / spec.hp, WALL_HP_H)
     }
+    this.buildingLayer.add(bars)
   }
 
   private drawHover(): void {
@@ -150,8 +177,8 @@ export class GameScene extends Scene {
     this.hover
       .lineStyle(2, color)
       .strokeRect(x * TILE_PX + 1, y * TILE_PX + 1, TILE_PX - 2, TILE_PX - 2)
-    if (tool !== "rockPile") return
-    const r = PEASANT.throwRange * TILE_PX
+    if (tool !== "rockPile" && tool !== "tower") return
+    const r = (PEASANT.throwRange + (BUILDINGS[tool].rangeBonus ?? 0)) * TILE_PX
     this.hover.lineStyle(2, color, 0.6).strokeCircle((x + 0.5) * TILE_PX, (y + 0.5) * TILE_PX, r)
   }
 
@@ -163,6 +190,7 @@ export class GameScene extends Scene {
       this.acc -= this.tickMs
       stepBattle(this.state, b, TICKS_PER_SEC)
       this.view.events(b)
+      if (b.events.some((ev) => ev.type === "wall" || ev.type === "empty")) this.drawBuildings()
       this.game.events.emit(EV.changed)
     }
     this.view.render(b, Math.min(1, this.acc / this.tickMs))
@@ -183,8 +211,11 @@ export class GameScene extends Scene {
 
   private endDefense(b: Battle): void {
     if (b.result === "lost") {
-      // shortcut: no mayor/checkpoints yet (M6), a loss restarts at stage 1
-      this.game.events.emit(EV.toast, "The mayor has fallen. The village is lost!")
+      const at = this.profile.checkpoint
+      this.game.events.emit(
+        EV.toast,
+        `The village is lost! The mayor flees and founds a new one at stage ${at}.`,
+      )
       this.time.delayedCall(LOSS_DELAY_MS, () => this.scene.restart({}))
       return
     }
@@ -193,10 +224,15 @@ export class GameScene extends Scene {
     this.battle = null
     this.path.setVisible(true)
     this.registry.set(REG.battle, null)
-    const gain = winStage(this.state)
+    const won = this.state.stage
+    const gain = winStage(this.state, b)
+    const renown = earnRenown(this.profile, won, this.state.stage)
+    saveProfile(this.profile)
+    this.drawPath()
+    const win = b.flawless ? "Flawless victory!" : "Victory!"
     this.game.events.emit(
       EV.toast,
-      `Victory! +${gain.wood} wood, +${gain.stone} stone, +${gain.peasants} peasants`,
+      `${win} +${gain.reputation} Rep, +${renown} Renown, +${gain.wood} wood, +${gain.stone} stone, +${gain.peasants} peasants`,
     )
     this.game.events.emit(EV.changed)
   }
@@ -211,11 +247,24 @@ export class GameScene extends Scene {
       const err = placeBuilding(this.state, tool, x, y)
       if (err)
         this.game.events.emit(EV.toast, err === "notNear" ? NEAR_TEXT[tool] : ERROR_TEXT[err])
-    } else if (b && !toggleWorkers(this.state, b.id) && BUILDINGS[b.type].workers > 0) {
-      this.game.events.emit(EV.toast, "No idle peasants")
+    } else if (b) {
+      this.tapBuilding(b)
     }
     this.drawBuildings()
+    this.drawPath()
     this.game.events.emit(EV.changed)
     this.drawHover()
+  }
+
+  /** No tool: repair a wall, or free / reassign a work building's worker. */
+  private tapBuilding(b: Building): void {
+    const spec = BUILDINGS[b.type]
+    if (isWall(b.type)) {
+      if (repairWall(this.state, b.id)) return
+      const msg = b.hp === spec.hp ? "Not damaged" : `Not enough ${material(b.type)} to repair`
+      this.game.events.emit(EV.toast, msg)
+    } else if (!toggleWorkers(this.state, b.id) && spec.workers > 0) {
+      this.game.events.emit(EV.toast, "No idle peasants")
+    }
   }
 }

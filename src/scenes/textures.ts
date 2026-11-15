@@ -1,6 +1,6 @@
 import type { Scene } from "phaser"
 import { MAP } from "../logic/balance.ts"
-import { type BuildingType, Terrain } from "../logic/types.ts"
+import { type BuildingType, type EnemyKind, Terrain } from "../logic/types.ts"
 
 /** Tile size in world pixels. */
 export const TILE_PX = 32
@@ -14,11 +14,11 @@ export const TERRAIN_KEY: Record<Terrain, string> = {
 export const GRASS_ALT = "t-grass2"
 export const HUT_KEY = "hut"
 export const SPAWN_KEY = "spawn"
-export const RAIDER_KEY = "u-raider"
 export const PEASANT_KEY = "u-peasant"
 export const ROCK_KEY = "rock"
 export const MAYOR_KEY = "u-mayor"
 export const buildingKey = (type: BuildingType) => `b-${type}`
+export const enemyKey = (kind: EnemyKind) => `u-${kind}`
 
 type G = ReturnType<Scene["make"]["graphics"]>
 
@@ -34,6 +34,25 @@ const grass = (g: G, base: number, tuft: number) => {
     [7, 27],
   ] as const)
     g.fillRect(x, y, 2, 3)
+}
+
+/** Row of sharpened stakes across the tile. */
+const stakes = (g: G) => {
+  for (let x = 1; x < T; x += 6) {
+    g.fillStyle(0x5e_40_22).fillRect(x, 8, 5, 22)
+    g.fillStyle(0x8a_62_38).fillRect(x + 1, 8, 2, 22)
+    g.fillStyle(0x5e_40_22).fillTriangle(x, 8, x + 2.5, 2, x + 5, 8)
+  }
+  g.fillStyle(0x3d_2a_1a).fillRect(0, 14, T, 2).fillRect(0, 24, T, 2)
+}
+
+/** Grey stone blocks filling the tile. */
+const blocks = (g: G, base: number, joint: number) => {
+  g.fillStyle(joint).fillRect(0, 0, T, T)
+  for (let row = 0; row < 4; row++) {
+    const off = row % 2 === 0 ? 0 : -5
+    for (let x = off; x < T; x += 10) g.fillStyle(base).fillRect(x + 1, row * 8 + 1, 9, 7)
+  }
 }
 
 /** Small person: body color, skin color. */
@@ -119,7 +138,39 @@ const DRAW: Record<string, (g: G) => void> = {
     ] as const)
       g.fillCircle(x, y, r)
   },
-  [RAIDER_KEY]: (g) => figure(g, 0x8e_1b_1b, 0xd9_a0_7a),
+  [buildingKey("palisade")]: stakes,
+  [buildingKey("gate")]: (g) => {
+    stakes(g)
+    g.fillStyle(0x3d_2a_1a).fillRect(8, 12, 16, 18)
+    g.fillStyle(0x7a_55_30).fillRect(10, 14, 12, 16)
+    g.lineStyle(1, 0x3d_2a_1a).lineBetween(16, 14, 16, 30)
+  },
+  [buildingKey("stoneWall")]: (g) => blocks(g, 0x9b_92_84, 0x5d_56_4c),
+  [buildingKey("tower")]: (g) => {
+    blocks(g, 0x8a_82_76, 0x4d_48_40)
+    g.fillStyle(0x4d_48_40)
+    for (let x = 0; x < T; x += 8) g.fillRect(x, 0, 4, 5)
+    g.fillStyle(0x2a_26_22).fillRect(13, 12, 6, 9)
+  },
+  [enemyKey("raider")]: (g) => figure(g, 0x8e_1b_1b, 0xd9_a0_7a),
+  [enemyKey("torchbearer")]: (g) => {
+    figure(g, 0xb5_4a_1a, 0xd9_a0_7a)
+    g.lineStyle(2, 0x5e_40_22).lineBetween(24, 26, 26, 10)
+    g.fillStyle(0xff_8c_1a).fillCircle(26, 8, 4)
+    g.fillStyle(0xff_e0_5a).fillCircle(26, 9, 2)
+  },
+  [enemyKey("armored")]: (g) => {
+    figure(g, 0x6b_6b_72, 0xd9_a0_7a)
+    g.fillStyle(0x9a_9a_a2).fillRect(10, 3, 12, 4)
+    g.fillStyle(0x8e_1b_1b).fillRect(12, 18, 8, 3)
+  },
+  [enemyKey("ram")]: (g) => {
+    g.fillStyle(0x00_00_00, 0.25).fillEllipse(16, 28, 28, 6)
+    g.fillStyle(0x8e_1b_1b).fillTriangle(4, 18, 16, 4, 28, 18)
+    g.fillStyle(0x6b_44_23).fillRect(1, 17, 30, 7)
+    g.fillStyle(0x4f_4a_43).fillRect(27, 16, 5, 9)
+    g.fillStyle(0x3d_2a_1a).fillCircle(8, 26, 4).fillCircle(24, 26, 4)
+  },
   [PEASANT_KEY]: (g) => figure(g, 0x9c_7a_4a, 0xe8_c3_9e),
   [ROCK_KEY]: (g) => {
     g.fillStyle(0x3d_3a_35).fillCircle(5, 5, 4)

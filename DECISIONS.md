@@ -44,3 +44,23 @@
   (1 + `COST_GROWTH` × same-type count), rounded. Selling refunds 50% of what the sold copy would
   cost to rebuild, so sell + rebuild never makes money. Flawless (+2 Reputation) waits for walls in
   M4; every win gives +1 until then. Wave growth `round(count × (1 + 0.1 × reputation))` per kind.
+- **Walls** (M4): palisade, gate, stone wall and tower are 1-tile buildings with HP (`BUILDINGS`).
+  Enemies treat a wall tile as passable at `hp × WALL_PATH_COST` extra tiles in their flow field:
+  they walk around unless the detour is longer than breaking through; then they hit the wall in
+  their way (reach from the tile edge). A broken wall is removed and the enemy field recomputed.
+  Peasants can't pass palisades; gates, stone walls and towers let them through and stand on them.
+  Diagonal steps never squeeze between two walls. Walls keep their damage between waves.
+- **Wall prices** are flat (no rising cost); building a stone wall on a palisade upgrades it in
+  place for `UPGRADE.cost`. No building on spawn tiles.
+- **Repair**: tap a damaged wall without a tool; repairs as far as the stockpile allows (1 wood or
+  stone per `REPAIR_HP`). Wooden walls (paid in wood) use wood and burn (torchbearers deal
+  `FIRE_DAMAGE`×).
+- **Towers** are defense spots like rock piles for up to `TOWER_HOLDS` peasants, who stand on them
+  and fetch rocks there. Peasants standing on a stone wall or tower throw farther (`rangeBonus`);
+  stone walls are not assigned posts yet, the bonus applies when a peasant happens to stand there.
+- **Flawless**: +2 Reputation when walls stood at the start of the wave and none was hit.
+- **Enemies**: torchbearer (fast, burns wood), armored bandit (tough, slow), ram (slow, very tough,
+  ignores peasants, 25 wall damage). Mini boss 5 = mob of 24 raiders, 10 = 2 rams leading a mixed
+  wave; stage 6 is a breather. Spawn order is by kind (rams first), not interleaved.
+- **Build bar** shows unlocked buildings only and wraps into rows on narrow screens; the extra row
+  overlaps the map bottom (camera inset unchanged).

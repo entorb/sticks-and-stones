@@ -16,13 +16,20 @@ export interface GameMap {
   height: number
   /** Row-major, index = y * width + x. */
   tiles: Terrain[]
-  /** Tile of the mayor's hut (1 tile, map center). */
+  /** Top-left tile of the mayor's hut (MAP.hutSize², map center). */
   hut: Point
   /** Enemy spawn tiles on the map edge. */
   spawns: Point[]
 }
 
-export type BuildingType = "woodcutter" | "quarry" | "rockPile"
+export type BuildingType =
+  | "woodcutter"
+  | "quarry"
+  | "rockPile"
+  | "palisade"
+  | "gate"
+  | "stoneWall"
+  | "tower"
 
 export interface Resources {
   wood: number
@@ -38,6 +45,14 @@ export interface BuildingSpec {
   /** Terrain that must be next to the building (8 neighbors), or null. */
   near: Terrain | null
   unlockStage: number
+  /** Walls and towers: hit points; they block enemies and keep a flat price. */
+  hp?: number
+  /** Peasants may walk through or stand on it (walls only). */
+  peasantsPass?: boolean
+  /** Extra throw range for peasants standing on it (tiles). */
+  rangeBonus?: number
+  /** Rock piles and towers: rocks stocked, refilled each build phase. */
+  rocks?: number
 }
 
 export interface Building {
@@ -46,6 +61,10 @@ export interface Building {
   x: number
   y: number
   workers: number
+  /** Walls and towers only. */
+  hp?: number
+  /** Rock piles and towers: rocks left. */
+  rocks?: number
 }
 
 export interface GameState {
@@ -55,13 +74,13 @@ export interface GameState {
   res: Resources
   /** All peasants; idle = peasants - assigned workers. */
   peasants: number
-  /** In-run Reputation: more peasants arrive, waves grow. */
+  /** Village Reputation: more peasants arrive. */
   reputation: number
   buildings: Building[]
   nextId: number
 }
 
-export type EnemyKind = "raider"
+export type EnemyKind = "raider" | "torchbearer" | "armored" | "ram"
 
 export interface EnemySpec {
   hp: number
@@ -72,6 +91,21 @@ export interface EnemySpec {
   cooldown: number
   /** Melee reach in tiles. */
   range: number
+  /** Damage per hit to walls. */
+  wallDamage: number
+  /** Fire: wooden walls take FIRE_DAMAGE times the wall damage. */
+  fire: boolean
+  /** Attacks peasants on its way; false = only walls and the mayor. */
+  preys: boolean
+  /** Plunder per kill, paid after a won wave. */
+  loot: Resources
+}
+
+/** The mayor: permanent across villages (saved). */
+export interface Profile {
+  renown: number
+  /** Highest checkpoint stage reached; new villages start here. */
+  checkpoint: number
 }
 
 export interface WaveSpec {

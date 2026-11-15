@@ -1,15 +1,16 @@
 import { type GameObjects, Scene } from "phaser"
-import { MAYOR } from "../logic/balance.ts"
+import { BUILDINGS, MAYOR } from "../logic/balance.ts"
 import type { Battle } from "../logic/battle.ts"
 import { buildCost } from "../logic/building.ts"
 import { idlePeasants } from "../logic/state.ts"
-import type { BuildingType, GameState, Resources } from "../logic/types.ts"
+import type { BuildingType, GameState, Profile, Resources } from "../logic/types.ts"
 import { BAR_H, EV, HUD_H, REG, type Tool } from "./shared.ts"
 
 const PAD = 6
 /** Below this screen width (px) the HUD uses a smaller font. */
 const NARROW = 480
 const BTN_MAX_W = 120
+const BTN_MIN_W = 64
 const TOAST_MS = 1800
 const FONT = "sans-serif"
 const PANEL = 0x1e_16_0e
@@ -21,6 +22,10 @@ const NAMES: Record<BuildingType, string> = {
   woodcutter: "Woodcutter",
   quarry: "Quarry",
   rockPile: "Rock pile",
+  palisade: "Palisade",
+  gate: "Gate",
+  stoneWall: "Stone wall",
+  tower: "Tower",
 }
 
 const costText = (c: Resources) =>
@@ -37,6 +42,9 @@ export class UIScene extends Scene {
   private hud!: GameObjects.Text
   private toast!: GameObjects.Text
   private buttons: Button[] = []
+  private bar!: GameObjects.Container
+  /** Build items shown (unlocked ones); the bar is rebuilt when this changes. */
+  private shown = 0
 
   constructor() {
     super("UI")
@@ -56,10 +64,7 @@ export class UIScene extends Scene {
       color: TEXT,
     })
     this.hud.setOrigin(0, 0.5)
-    this.add
-      .rectangle(0, height - BAR_H, width, BAR_H, PANEL, 0.85)
-      .setOrigin(0)
-      .setInteractive()
+    this.bar = this.add.container()
     this.toast = this.add
       .text(width / 2, height - BAR_H - PAD * 2, "", {
         fontFamily: FONT,
@@ -86,19 +91,33 @@ export class UIScene extends Scene {
     })
   }
 
+  /** Build bar with the unlocked buildings; wraps into rows when buttons get too narrow. */
   private makeBar(): void {
     const { width, height } = this.scale
+    this.bar.removeAll(true)
+    const unlocked = (Object.keys(NAMES) as BuildingType[]).filter(
+      (t) => BUILDINGS[t].unlockStage <= this.state.stage,
+    )
+    this.shown = unlocked.length
     const items: [Tool | "defend", string][] = [
-      ...(Object.keys(NAMES) as BuildingType[]).map((t): [Tool, string] => [t, NAMES[t]]),
+      ...unlocked.map((t): [Tool, string] => [t, NAMES[t]]),
       ["sell", "Sell\n50% back"],
       ["defend", "Defend!"],
     ]
-    const w = Math.min(BTN_MAX_W, (width - PAD * (items.length + 1)) / items.length)
+    const cols = Math.min(items.length, Math.floor((width - PAD) / (BTN_MIN_W + PAD)))
+    const rows = Math.ceil(items.length / cols)
+    const w = Math.min(BTN_MAX_W, (width - PAD * (cols + 1)) / cols)
     const h = BAR_H - PAD * 2
-    const x0 = (width - (w * items.length + PAD * (items.length - 1))) / 2
+    // shortcut: extra rows grow over the map, the camera inset stays BAR_H; fine for 2 rows
+    const barH = rows * (h + PAD) + PAD
+    const top = height - barH
+    const panel = this.add.rectangle(0, top, width, barH, PANEL, 0.85).setOrigin(0)
+    this.bar.add(panel.setInteractive())
+    this.toast.setY(top - PAD * 2)
+    const x0 = (width - (w * cols + PAD * (cols - 1))) / 2
     this.buttons = items.map(([tool, label], i) => {
-      const x = x0 + i * (w + PAD)
-      const y = height - BAR_H + PAD
+      const x = x0 + (i % cols) * (w + PAD)
+      const y = top + PAD + Math.floor(i / cols) * (h + PAD)
       const bg = this.add
         .rectangle(x, y, w, h, BTN)
         .setOrigin(0)
@@ -112,6 +131,7 @@ export class UIScene extends Scene {
         })
         .setOrigin(0.5)
       bg.on("pointerup", () => this.press(tool))
+      this.bar.add([bg, text])
       return { tool, bg, text }
     })
   }
@@ -129,13 +149,15 @@ export class UIScene extends Scene {
 
   private refresh(): void {
     const s = this.state
+    const unlocked = Object.values(BUILDINGS).filter((x) => x.unlockStage <= s.stage).length
+    if (unlocked !== this.shown) this.makeBar()
     const b = this.registry.get(REG.battle) as Battle | null
     const mayor = b ? Math.max(0, b.mayor.hp) : MAYOR.hp
     const people = b
       ? `Foes ${b.enemies.length + b.spawns.length}`
       : `Idle ${idlePeasants(s)}/${s.peasants}`
     this.hud.setText(
-      `Stage ${s.stage} · Rep ${s.reputation} · Wood ${s.res.wood} · Stone ${s.res.stone} · Mayor ${mayor} · ${people}`,
+      `Stage ${s.stage} · Rep ${s.reputation} · Renown ${(this.registry.get(REG.profile) as Profile).renown} · Wood ${s.res.wood} · Stone ${s.res.stone} · Mayor ${mayor} · ${people}`,
     )
     const tool = this.registry.get(REG.tool) as Tool
     for (const btn of this.buttons) {

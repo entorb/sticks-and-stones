@@ -1,4 +1,4 @@
-import { BUILDINGS, COST_GROWTH, SELL_REFUND } from "./balance.ts"
+import { BUILDINGS, COST_GROWTH, SELL_REFUND, UPGRADE } from "./balance.ts"
 import { isHut, tileAt } from "./map.ts"
 import { buildingAt, idlePeasants } from "./state.ts"
 import { type BuildingType, type GameState, type Resources, Terrain } from "./types.ts"
@@ -11,12 +11,22 @@ function hasNeighbor(s: GameState, x: number, y: number, terrain: Terrain): bool
   return false
 }
 
-/** Price of the next `type` building: the base cost grows with every one already built. */
+/** Price of the next `type` building: the base cost grows with every one already built
+ * (walls and towers keep a flat price). */
 export function buildCost(s: GameState, type: BuildingType): Resources {
-  const f = 1 + COST_GROWTH * s.buildings.filter((b) => b.type === type).length
-  const { cost } = BUILDINGS[type]
+  const { cost, hp } = BUILDINGS[type]
+  const f =
+    hp === undefined ? 1 + COST_GROWTH * s.buildings.filter((b) => b.type === type).length : 1
   return { wood: Math.round(cost.wood * f), stone: Math.round(cost.stone * f) }
 }
+
+/** Building `type` at (x, y) upgrades the palisade there. */
+const isUpgrade = (s: GameState, type: BuildingType, x: number, y: number) =>
+  type === UPGRADE.to && buildingAt(s, x, y)?.type === UPGRADE.from
+
+/** What building `type` at (x, y) costs (an upgrade costs less). */
+const placeCost = (s: GameState, type: BuildingType, x: number, y: number): Resources =>
+  isUpgrade(s, type, x, y) ? UPGRADE.cost : buildCost(s, type)
 
 /** Why `type` can't be built at (x, y), or null if it can. */
 export function placeError(
@@ -28,14 +38,16 @@ export function placeError(
   const spec = BUILDINGS[type]
   if (s.stage < spec.unlockStage) return "locked"
   if (tileAt(s.map, x, y) !== Terrain.Grass) return "terrain"
-  if (isHut(s.map, x, y) || buildingAt(s, x, y)) return "occupied"
+  const spawn = s.map.spawns.some((p) => p.x === x && p.y === y)
+  const taken = buildingAt(s, x, y) && !isUpgrade(s, type, x, y)
+  if (isHut(s.map, x, y) || spawn || taken) return "occupied"
   if (spec.near !== null && !hasNeighbor(s, x, y, spec.near)) return "notNear"
-  const cost = buildCost(s, type)
+  const cost = placeCost(s, type, x, y)
   if (s.res.wood < cost.wood || s.res.stone < cost.stone) return "cost"
   return null
 }
 
-/** Build and pay; staffs the building from idle peasants if possible. */
+/** Build (or upgrade) and pay; staffs the building from idle peasants if possible. */
 export function placeBuilding(
   s: GameState,
   type: BuildingType,
@@ -45,11 +57,17 @@ export function placeBuilding(
   const err = placeError(s, type, x, y)
   if (err) return err
   const spec = BUILDINGS[type]
-  const cost = buildCost(s, type)
+  const cost = placeCost(s, type, x, y)
   s.res.wood -= cost.wood
   s.res.stone -= cost.stone
+  const old = buildingAt(s, x, y)
+  if (old) {
+    old.type = type
+    old.hp = spec.hp
+    return null
+  }
   const workers = idlePeasants(s) >= spec.workers ? spec.workers : 0
-  s.buildings.push({ id: s.nextId, type, x, y, workers })
+  s.buildings.push({ id: s.nextId, type, x, y, workers, hp: spec.hp, rocks: spec.rocks })
   s.nextId += 1
   return null
 }

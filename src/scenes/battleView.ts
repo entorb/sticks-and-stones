@@ -1,7 +1,7 @@
 import type { GameObjects, Scene } from "phaser"
 import { ENEMIES, MAYOR, PEASANT } from "../logic/balance.ts"
 import type { Battle, Unit } from "../logic/battle.ts"
-import { MAYOR_KEY, PEASANT_KEY, RAIDER_KEY, ROCK_KEY, TILE_PX } from "./textures.ts"
+import { enemyKey, MAYOR_KEY, PEASANT_KEY, ROCK_KEY, TILE_PX } from "./textures.ts"
 
 /** The mayor is drawn in front of the hut door, below the hut center (px). */
 const MAYOR_AT_DOOR = 26
@@ -50,7 +50,13 @@ export class BattleView {
     this.bars.clear()
     const looks = new Map<number, Look>()
     for (const e of b.enemies)
-      looks.set(e.id, { key: RAIDER_KEY, max: ENEMIES[e.kind].hp, color: HP_ENEMY, dx: 0, dy: 0 })
+      looks.set(e.id, {
+        key: enemyKey(e.kind),
+        max: ENEMIES[e.kind].hp,
+        color: HP_ENEMY,
+        dx: 0,
+        dy: 0,
+      })
     for (const p of b.peasants)
       looks.set(p.id, { key: PEASANT_KEY, max: PEASANT.hp, color: HP_FRIEND, dx: 0, dy: 0 })
     looks.set(b.mayor.id, {
@@ -89,7 +95,7 @@ export class BattleView {
   /** Animate this tick's events (call before `render`, which removes dead sprites). */
   events(b: Battle): void {
     for (const ev of b.events) {
-      const img = this.units.get(ev.id)
+      const img = ev.type === "wall" ? undefined : this.units.get(ev.id)
       if (!img) continue
       if (ev.type === "throw")
         this.scene.tweens.add({ targets: img, scaleY: 0.75, duration: THROW_MS, yoyo: true })

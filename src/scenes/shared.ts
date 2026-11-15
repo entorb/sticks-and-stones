@@ -4,7 +4,7 @@ import type { BuildingType } from "../logic/types.ts"
 export type Tool = BuildingType | "sell" | null
 
 /** Registry keys shared by GameScene and UIScene. */
-export const REG = { state: "state", tool: "tool", battle: "battle" } as const
+export const REG = { state: "state", tool: "tool", battle: "battle", profile: "profile" } as const
 
 /** game.events names. */
 export const EV = { changed: "state-changed", toast: "toast", defend: "defend" } as const
