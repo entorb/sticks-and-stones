@@ -1,1 +1,1 @@
-# sticks-and-stones
+# Sticks & Stones: Defend the Village
