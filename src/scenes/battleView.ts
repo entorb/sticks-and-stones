@@ -10,6 +10,7 @@ import {
   TILE_PX,
   TOOL_GRIP,
   TOOL_KEY,
+  WEAPON_KEY,
 } from "./textures.ts"
 
 /** The mayor is drawn in front of the hut door, below the hut center (px). */
@@ -50,7 +51,7 @@ export class BattleView {
   /** Unit sprites by unit id (enemies, peasants, mayor). */
   private readonly units = new Map<number, GameObjects.Image>()
   private readonly rocks = new Map<number, GameObjects.Image>()
-  /** Tool sprites of workers by unit id. */
+  /** Tool sprites of workers and weapon sprites of enemies by unit id. */
   private readonly tools = new Map<number, GameObjects.Image>()
   /** Tool texture by work building id. */
   private readonly toolOf = new Map<number, string>()
@@ -126,21 +127,30 @@ export class BattleView {
     }
   }
 
-  /** Workers carry their building's tool (axe, pick) in hand. */
+  /** Workers carry their building's tool (axe, pick), enemies their weapon, in hand. */
   private renderTools(b: Battle): void {
-    const armed = b.peasants.filter((p) => p.role === "worker" && this.toolOf.has(p.buildingId))
+    const held = new Map<number, string>()
+    for (const p of b.peasants) {
+      const key = this.toolOf.get(p.buildingId)
+      if (p.role === "worker" && key) held.set(p.id, key)
+    }
+    for (const e of b.enemies) {
+      const key = WEAPON_KEY[e.kind]
+      if (key) held.set(e.id, key)
+    }
+    const armed: Unit[] = [...b.peasants, ...b.enemies].filter((u) => held.has(u.id))
     sync(
       this.tools,
       armed,
-      (p) =>
+      (u) =>
         this.scene.add
-          .image(0, 0, this.toolOf.get(p.buildingId) ?? PEASANT_KEY)
+          .image(0, 0, held.get(u.id) ?? PEASANT_KEY)
           .setOrigin(TOOL_GRIP.x, TOOL_GRIP.y)
           .setScale(TOOL_HAND.scale)
           .setAngle(TOOL_HAND.rest)
           .setDepth(3),
-      (tool, p) => {
-        const img = this.units.get(p.id)
+      (tool, u) => {
+        const img = this.units.get(u.id)
         if (img) tool.setPosition(img.x + TOOL_HAND.dx, img.y + TOOL_HAND.dy)
       },
     )

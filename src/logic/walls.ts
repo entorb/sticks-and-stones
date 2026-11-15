@@ -37,7 +37,7 @@ export function hitWall(s: GameState, b: Battle, e: Enemy, w: Building): void {
   w.hp -= spec.wallDamage * (burn ? FIRE_DAMAGE : 1)
   e.cooldown = spec.cooldown
   b.flawless = false
-  b.events.push({ type: "wall", id: w.id })
+  b.events.push({ type: "strike", id: e.id }, { type: "wall", id: w.id })
   if (w.hp > 0) return
   s.buildings = s.buildings.filter((x) => x !== w)
   Object.assign(b, walkGrids(s))

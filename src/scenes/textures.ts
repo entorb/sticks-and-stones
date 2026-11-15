@@ -26,6 +26,15 @@ export const TOOL_KEY: Partial<Record<BuildingType, string>> = {
   quarry: PICK_KEY,
 }
 export const TOOL_GRIP = { x: 0.5, y: 0.875 } as const
+const CLUB_KEY = "w-club"
+const TORCH_KEY = "w-torch"
+const SWORD_KEY = "w-sword"
+/** Weapon an enemy holds and swings (same grip as tools); the ram has none. */
+export const WEAPON_KEY: Partial<Record<EnemyKind, string>> = {
+  raider: CLUB_KEY,
+  torchbearer: TORCH_KEY,
+  armored: SWORD_KEY,
+}
 export const enemyKey = (kind: EnemyKind) => `u-${kind}`
 
 type G = ReturnType<Scene["make"]["graphics"]>
@@ -161,12 +170,7 @@ const DRAW: Record<string, (g: G) => void> = {
     g.fillStyle(0x2a_26_22).fillRect(13, 12, 6, 9)
   },
   [enemyKey("raider")]: (g) => figure(g, 0x8e_1b_1b, 0xd9_a0_7a),
-  [enemyKey("torchbearer")]: (g) => {
-    figure(g, 0xb5_4a_1a, 0xd9_a0_7a)
-    g.lineStyle(2, 0x5e_40_22).lineBetween(24, 26, 26, 10)
-    g.fillStyle(0xff_8c_1a).fillCircle(26, 8, 4)
-    g.fillStyle(0xff_e0_5a).fillCircle(26, 9, 2)
-  },
+  [enemyKey("torchbearer")]: (g) => figure(g, 0xb5_4a_1a, 0xd9_a0_7a),
   [enemyKey("armored")]: (g) => {
     figure(g, 0x6b_6b_72, 0xd9_a0_7a)
     g.fillStyle(0x9a_9a_a2).fillRect(10, 3, 12, 4)
@@ -186,6 +190,22 @@ const DRAW: Record<string, (g: G) => void> = {
   [PICK_KEY]: (g) => {
     g.lineStyle(3, 0x5a_3b_1e).lineBetween(16, 28, 16, 6)
     g.fillStyle(0xcf_cf_cf).fillTriangle(4, 12, 16, 4, 16, 9).fillTriangle(28, 12, 16, 4, 16, 9)
+  },
+  [CLUB_KEY]: (g) => {
+    g.lineStyle(3, 0x5a_3b_1e).lineBetween(16, 28, 16, 10)
+    g.fillStyle(0x6b_44_23).fillCircle(16, 8, 5)
+    g.fillStyle(0x3d_2a_1a).fillCircle(14, 6, 1).fillCircle(18, 9, 1)
+  },
+  [TORCH_KEY]: (g) => {
+    g.lineStyle(3, 0x5e_40_22).lineBetween(16, 28, 16, 10)
+    g.fillStyle(0xff_8c_1a).fillCircle(16, 7, 5)
+    g.fillStyle(0xff_e0_5a).fillCircle(16, 8, 2.5)
+  },
+  [SWORD_KEY]: (g) => {
+    g.fillStyle(0xcf_cf_cf).fillRect(14, 2, 4, 20)
+    g.fillStyle(0xcf_cf_cf).fillTriangle(14, 2, 16, -1, 18, 2)
+    g.fillStyle(0x6b_44_23).fillRect(10, 22, 12, 2)
+    g.fillStyle(0x5a_3b_1e).fillRect(15, 24, 2, 5)
   },
   [PEASANT_KEY]: (g) => figure(g, 0x9c_7a_4a, 0xe8_c3_9e),
   [ROCK_KEY]: (g) => {
