@@ -1,4 +1,4 @@
-import { ENEMIES, ENEMY_AGGRO, REPUTATION } from "./balance.ts"
+import { ENEMIES, ENEMY_AGGRO, PEASANT, REPUTATION } from "./balance.ts"
 import {
   type Battle,
   dist,
@@ -6,6 +6,7 @@ import {
   moveToward,
   newUnit,
   reach,
+  separate,
   strike,
   type Unit,
 } from "./battle.ts"
@@ -23,7 +24,7 @@ import { nextStage } from "./progression.ts"
 import { buildingAt } from "./state.ts"
 import type { Building, GameState, Resources } from "./types.ts"
 import { hitWall, isWall, walkGrids } from "./walls.ts"
-import { spawnSchedule } from "./waves.ts"
+import { spawnSchedule, waveSpawn } from "./waves.ts"
 
 /** Start the defense phase of the current stage. */
 export function startWave(s: GameState): Battle {
@@ -40,6 +41,7 @@ export function startWave(s: GameState): Battle {
     mayor: mayorAt(hutCenter(s.map)),
     rocks: [],
     loot: { wood: 0, stone: 0 },
+    fallen: 0,
     nextId: id,
     result: "running",
     events: [],
@@ -47,7 +49,7 @@ export function startWave(s: GameState): Battle {
 }
 
 function spawnEnemies(s: GameState, b: Battle): void {
-  const origin = s.map.spawns[0]
+  const origin = b.spawns[0] && b.spawns[0].tick <= b.tick ? waveSpawn(s) : undefined
   while (origin && b.spawns[0] && b.spawns[0].tick <= b.tick) {
     const kind = b.spawns[0].kind
     b.spawns.shift()
@@ -56,14 +58,17 @@ function spawnEnemies(s: GameState, b: Battle): void {
   }
 }
 
-/** Nearest peasant (if it preys) or the mayor within aggro range and a straight walk. */
+/** Prey within aggro range and a straight walk: the mayor first (that wins the battle), else the
+ * weakest peasant (if it preys), ties by distance. */
 function prey(b: Battle, e: Enemy): Unit | undefined {
   const spec = ENEMIES[e.kind]
+  const ok = (u: Unit) =>
+    dist(e, u) <= ENEMY_AGGRO && (reach(e, u) <= spec.range || lineWalkable(b.grid, e, u))
+  if (ok(b.mayor)) return b.mayor
   let best: Unit | undefined
-  for (const u of spec.preys ? [b.mayor, ...b.peasants] : [b.mayor]) {
-    const d = dist(e, u)
-    if (d > ENEMY_AGGRO || (best && d >= dist(e, best))) continue
-    if (reach(e, u) <= spec.range || lineWalkable(b.grid, e, u)) best = u
+  for (const u of spec.preys ? b.peasants : []) {
+    const better = !best || u.hp < best.hp || (u.hp === best.hp && dist(e, u) < dist(e, best))
+    if (better && ok(u)) best = u
   }
   return best
 }
@@ -106,6 +111,7 @@ function removeDead(s: GameState, b: Battle): void {
     if (p.hp > 0) continue
     b.events.push({ type: "died", id: p.id })
     s.peasants -= 1
+    b.fallen += 1
     const home = s.buildings.find((x) => x.id === p.buildingId)
     if (p.role === "worker" && home) home.workers -= 1
   }
@@ -124,6 +130,7 @@ export function stepBattle(s: GameState, b: Battle, tps: number): void {
   spawnEnemies(s, b)
   for (const e of b.enemies) enemyAct(s, b, e, tps)
   movePeasants(s, b, tps)
+  separate(b)
   throwRocks(s, b, tps)
   mayorFights(b)
   flyRocks(b)
@@ -133,7 +140,7 @@ export function stepBattle(s: GameState, b: Battle, tps: number): void {
   else if (b.spawns.length === 0 && b.enemies.length === 0) b.result = "won"
 }
 
-/** Kill loot, Reputation (more if flawless), new peasants and next stage after a won wave;
+/** Kill loot, Reputation (more if flawless), recovered and new peasants, next stage after a won wave;
  * returns the total gain. */
 export function winStage(
   s: GameState,
@@ -144,7 +151,8 @@ export function winStage(
   s.res.stone += loot.stone
   const reputation = b.flawless ? REPUTATION.flawless : REPUTATION.win
   s.reputation += reputation
-  const peasants = 1 + Math.floor(s.reputation / REPUTATION.arrivalsPer)
+  const peasants =
+    1 + Math.floor(s.reputation / REPUTATION.arrivalsPer) + Math.ceil(b.fallen * PEASANT.recover)
   s.peasants += peasants
   const gain = nextStage(s)
   return { wood: gain.wood + loot.wood, stone: gain.stone + loot.stone, peasants, reputation }

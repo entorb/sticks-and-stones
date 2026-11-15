@@ -87,17 +87,12 @@ function edgeTiles(map: GameMap): Point[] {
   return out
 }
 
-function pickSpawns(map: GameMap, rng: Rng): Point[] {
+/** Spawn candidates: reachable grass on the map edge; each wave picks one (`waveSpawn`). */
+export function spawnCandidates(map: GameMap): Point[] {
   const reach = reachableFromHut(map)
-  const candidates = edgeTiles(map).filter(
+  return edgeTiles(map).filter(
     (p) => tileAt(map, p.x, p.y) === Terrain.Grass && reach.has(p.y * map.width + p.x),
   )
-  const spawns: Point[] = []
-  while (spawns.length < MAP.spawnCount && candidates.length > 0) {
-    const i = Math.floor(rng() * candidates.length)
-    spawns.push(...candidates.splice(i, 1))
-  }
-  return spawns
 }
 
 /** Deterministic map from a seed: grass, terrain clusters around the central hut, edge spawns. */
@@ -118,6 +113,6 @@ export function generateMap(seed: number): GameMap {
   ] as const) {
     for (let i = 0; i < c.count; i++) growCluster(map, rng, terrain, c)
   }
-  map.spawns = pickSpawns(map, rng)
+  map.spawns = spawnCandidates(map)
   return map
 }

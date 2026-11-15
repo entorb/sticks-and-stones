@@ -4,7 +4,7 @@ import type { Battle } from "../logic/battle.ts"
 import { buildCost } from "../logic/building.ts"
 import { idlePeasants } from "../logic/state.ts"
 import type { BuildingType, GameState, Profile, Resources } from "../logic/types.ts"
-import { BAR_H, EV, HUD_H, REG, type Tool } from "./shared.ts"
+import { BAR_H, BTN, EV, FONT, HUD_H, PANEL, REG, TEXT, type Tool } from "./shared.ts"
 
 const PAD = 6
 /** Below this screen width (px) the HUD uses a smaller font. */
@@ -12,11 +12,7 @@ const NARROW = 480
 const BTN_MAX_W = 120
 const BTN_MIN_W = 64
 const TOAST_MS = 1800
-const FONT = "sans-serif"
-const PANEL = 0x1e_16_0e
-const BTN = 0x4a_38_26
 const BTN_ON = 0xc9_a2_27
-const TEXT = "#f4e9c8"
 
 const NAMES: Record<BuildingType, string> = {
   woodcutter: "Woodcutter",
@@ -27,6 +23,18 @@ const NAMES: Record<BuildingType, string> = {
   stoneWall: "Stone wall",
   tower: "Tower",
 }
+
+/** Tooltip shown as a toast when a build tool is picked. */
+const HINTS: Record<BuildingType, string> = {
+  woodcutter: "Next to forest. 1 worker chops wood each stage.",
+  quarry: "Next to rock. 1 worker cuts stone each stage.",
+  rockPile: "Peasants fetch rocks here to throw. Refilled each stage.",
+  palisade: "Wooden wall, blocks foes until broken. Tap to repair.",
+  gate: "Lets peasants through, blocks foes.",
+  stoneWall: "Strong wall, peasants on it throw farther. Build on a palisade to upgrade.",
+  tower: "Holds rocks, longer throw range.",
+}
+const SPEEDS = [1, 2, 4]
 
 const costText = (c: Resources) =>
   [c.wood && `${c.wood} wood`, c.stone && `${c.stone} stone`].filter(Boolean).join(" ")
@@ -74,6 +82,8 @@ export class UIScene extends Scene {
         color: TEXT,
         backgroundColor: "#000000aa",
         padding: { x: 8, y: 4 },
+        align: "center",
+        wordWrap: { width: width - PAD * 4 },
       })
       .setOrigin(0.5, 1)
       .setVisible(false)
@@ -109,12 +119,12 @@ export class UIScene extends Scene {
     const rows = Math.ceil(items.length / cols)
     const w = Math.min(BTN_MAX_W, (width - PAD * (cols + 1)) / cols)
     const h = BAR_H - PAD * 2
-    // shortcut: extra rows grow over the map, the camera inset stays BAR_H; fine for 2 rows
     const barH = rows * (h + PAD) + PAD
     const top = height - barH
     const panel = this.add.rectangle(0, top, width, barH, PANEL, 0.85).setOrigin(0)
     this.bar.add(panel.setInteractive())
     this.toast.setY(top - PAD * 2)
+    this.registry.set(REG.barH, barH)
     const x0 = (width - (w * cols + PAD * (cols - 1))) / 2
     this.buttons = items.map(([tool, label], i) => {
       const x = x0 + (i % cols) * (w + PAD)
@@ -138,13 +148,20 @@ export class UIScene extends Scene {
   }
 
   private press(tool: Tool | "defend"): void {
-    if (this.registry.get(REG.battle)) return
+    if (this.registry.get(REG.battle)) {
+      if (tool !== "defend") return
+      const speed = this.registry.get(REG.speed) as number
+      this.registry.set(REG.speed, SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length] ?? 1)
+      this.refresh()
+      return
+    }
     if (tool === "defend") {
       this.game.events.emit(EV.defend)
       return
     }
     const current = this.registry.get(REG.tool) as Tool
     this.registry.set(REG.tool, current === tool ? null : tool)
+    if (tool && current !== tool) this.showToast(HINTS[tool])
     this.refresh()
   }
 
@@ -163,10 +180,16 @@ export class UIScene extends Scene {
     )
     const tool = this.registry.get(REG.tool) as Tool
     for (const btn of this.buttons) {
-      btn.bg.setFillStyle(btn.tool === tool ? BTN_ON : BTN).setAlpha(b ? 0.4 : 1)
-      const type = btn.tool as BuildingType
-      if (type in NAMES) btn.text.setText(`${NAMES[type]}\n${costText(buildCost(s, type))}`)
+      btn.bg.setFillStyle(btn.tool === tool ? BTN_ON : BTN)
+      btn.bg.setAlpha(b && btn.tool !== "defend" ? 0.4 : 1)
+      btn.text.setText(this.label(btn.tool, b !== null))
     }
+  }
+
+  /** Building name + cost; the Defend! button shows the speed toggle during a battle. */
+  private label(tool: Tool | "defend", battle: boolean): string {
+    if (tool === "defend") return battle ? `Speed ${this.registry.get(REG.speed)}×` : "Defend!"
+    return tool ? `${NAMES[tool]}\n${costText(buildCost(this.state, tool))}` : ""
   }
 
   private showToast(msg: string): void {

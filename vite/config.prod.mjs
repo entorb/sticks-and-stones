@@ -28,7 +28,8 @@ export default defineConfig({
   },
   plugins: [
     VitePWA({
-      registerType: "prompt",
+      // new versions take over on the next load; the village is autosaved, nothing to lose
+      registerType: "autoUpdate",
       injectRegister: "auto",
       manifest: {
         name: "Sticks & Stones: Defend the Village",

@@ -9,6 +9,7 @@ import {
   type Peasant,
   reach,
   strike,
+  weakestEnemy,
 } from "./battle.ts"
 import { hutCenter } from "./map.ts"
 import { flowField, type Grid, lineWalkable, waypoint } from "./pathing.ts"
@@ -114,7 +115,7 @@ function switchPile(s: GameState, b: Battle, p: Peasant): false {
 /** Workers hit an enemy in tool range; without a rock to get, they charge enemies near their pile
  * (or building). True = the worker fought this tick. */
 function toolFight(s: GameState, b: Battle, p: Peasant, tps: number): boolean {
-  const close = nearestEnemy(b, p, PEASANT.toolRange)
+  const close = weakestEnemy(b, p, PEASANT.toolRange)
   if (close) {
     strike(b, p, close, PEASANT.toolDamage, PEASANT.toolCooldown)
     return true
@@ -140,18 +141,19 @@ function pendingDamage(b: Battle): Map<number, number> {
   return out
 }
 
-/** Nearest enemy in range that incoming rocks won't already kill. */
+/** Enemy in range that incoming rocks won't already kill: one this rock finishes first, else the
+ * one closest to the mayor (the biggest threat). */
 function pickTarget(
   b: Battle,
   from: Point,
   range: number,
   pending: Map<number, number>,
 ): Enemy | undefined {
+  const left = (e: Enemy) => e.hp - (pending.get(e.id) ?? 0)
+  const score = (e: Enemy) => dist(b.mayor, e) - (left(e) <= PEASANT.throwDamage ? 1000 : 0)
   let target: Enemy | undefined
   for (const e of b.enemies) {
-    const doomed = e.hp <= (pending.get(e.id) ?? 0)
-    if (doomed || dist(from, e) > range) continue
-    if (!target || dist(from, e) < dist(from, target)) target = e
+    if (left(e) > 0 && dist(from, e) <= range && (!target || score(e) < score(target))) target = e
   }
   return target
 }
@@ -201,12 +203,8 @@ export function flyRocks(b: Battle): void {
   b.rocks = b.rocks.filter((r) => r.ticks > 0)
 }
 
-/** The mayor hits the nearest enemy in reach. */
+/** The mayor hits the weakest enemy in reach. */
 export function mayorFights(b: Battle): void {
-  let target: Enemy | undefined
-  for (const e of b.enemies) {
-    if (reach(b.mayor, e) <= MAYOR.range && (!target || dist(b.mayor, e) < dist(b.mayor, target)))
-      target = e
-  }
+  const target = weakestEnemy(b, b.mayor, MAYOR.range, reach)
   if (target) strike(b, b.mayor, target, MAYOR.damage, MAYOR.cooldown)
 }

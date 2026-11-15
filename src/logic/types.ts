@@ -18,7 +18,7 @@ export interface GameMap {
   tiles: Terrain[]
   /** Top-left tile of the mayor's hut (MAP.hutSize², map center). */
   hut: Point
-  /** Enemy spawn tiles on the map edge. */
+  /** Enemy spawn candidates on the map edge; each wave picks one (`waveSpawn`). */
   spawns: Point[]
 }
 
@@ -78,6 +78,8 @@ export interface GameState {
   reputation: number
   buildings: Building[]
   nextId: number
+  /** Mayor advance level of rock pile capacity (PILE_ADVANCE), copied from the profile. */
+  pileLevel?: number
 }
 
 export type EnemyKind = "raider" | "torchbearer" | "armored" | "ram"
@@ -106,6 +108,8 @@ export interface Profile {
   renown: number
   /** Highest checkpoint stage reached; new villages start here. */
   checkpoint: number
+  /** Bought levels of the rock pile advance (PILE_ADVANCE); missing = 0. */
+  pileLevel?: number
 }
 
 export interface WaveSpec {

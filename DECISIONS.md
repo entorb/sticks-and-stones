@@ -64,7 +64,33 @@
 - **Enemies**: torchbearer (fast, burns wood), armored bandit (tough, slow), ram (slow, very tough,
   ignores peasants, 25 wall damage). Mini boss 5 = mob of 24 raiders, 10 = 2 rams leading a mixed
   wave; stage 6 is a breather. Spawn order is by kind (rams first), not interleaved.
-- **Build bar** shows unlocked buildings only and wraps into rows on narrow screens; the extra row
-  overlaps the map bottom (camera inset unchanged).
+- **Build bar** shows unlocked buildings only and wraps into rows on narrow screens; the map
+  view shrinks to stay above it (`REG.barH`, M7).
+- **M7 polish**: battle speed 1×/2×/4× on the Defend! button during a battle (not saved). Tooltips
+  = a short hint toast when a build tool is picked (no hover/long-press). Install: "Install as app"
+  link in the menu when Chrome fires `beforeinstallprompt` (iOS: Share → Add to Home Screen, no
+  prompt). Service worker `autoUpdate`: new versions apply on the next load (autosave keeps the
+  village). Lighthouse dropped its PWA category (v12), so the PWA check is manual: manifest,
+  icons, offline precache via `dist/sw.js`.
 - **Pile switching** (M5): a peasant at an empty pile takes the nearest reachable pile or tower
   with rocks (towers only with room, `TOWER_HOLDS`); straight-line nearest, like mustering.
+- **Battle AI**: units keep `UNIT_SPACING` apart (pushed half each, never onto a blocked tile;
+  peasants in a tower and the mayor are exempt). Enemies go for the mayor when in aggro range,
+  else the weakest peasant. Throwers finish off an enemy one rock kills, else hit the one closest
+  to the mayor; melee (tools, mayor) hits the weakest in reach.
+- **Saving** (M6): only build-phase state is saved; reloading mid-battle resumes the build phase
+  before that wave (a retry). Broken, unknown or newer saves are ignored (new village).
+  Format changes: bump `SAVE_VERSION`, add `MIGRATIONS[old]`. Dev URL scenarios skip the menu
+  and never autosave.
+- **Rocks**: piles and towers hold 10. Mayor advance "Bigger rock piles" (`PILE_ADVANCE`, bought
+  with Renown in the menu): +10 rocks per level for piles and towers, permanent (profile
+  `pileLevel`). The village copies the level (`GameState.pileLevel`) on start and load; it applies
+  to new buildings and to the next refill.
+- **Fun pass** (owner: peasants die off, wave 5 impossible, Renown unusable): each wave spawns at a
+  random reachable grass edge tile (`waveSpawn`, fixed per seed + stage, so a retry repeats it);
+  `map.spawns` holds all candidates; only the current spawn is marked, blocked for building and
+  routed in the build phase. Save v2: migration recomputes the candidates of v1 maps.
+  Fallen peasants: half (rounded up, `PEASANT.recover`) were only wounded and rejoin after a won
+  stage. Rocks 10 → 15 per pile/tower (wave 5 ran out of ammo), wave 5 = 18 raiders at interval
+  10, first pile advance 5 Renown. A lost village returns to the menu (Renown shop, checkpoints)
+  instead of restarting at once. Bot: stages 1–10 won on seeds 1–5.

@@ -1,4 +1,4 @@
-import { MAYOR } from "./balance.ts"
+import { MAYOR, PEASANT, UNIT_SPACING } from "./balance.ts"
 import { type Grid, walkSpeed } from "./pathing.ts"
 import type { EnemyKind, GameMap, Point, Resources } from "./types.ts"
 import type { Spawn } from "./waves.ts"
@@ -73,6 +73,8 @@ export interface Battle {
   rocks: Rock[]
   /** Plunder from kills so far, paid on a win. */
   loot: Resources
+  /** Peasants beaten this battle; some recover on a win (`PEASANT.recover`). */
+  fallen: number
   nextId: number
   result: "running" | "won" | "lost"
   events: BattleEvent[]
@@ -118,4 +120,51 @@ export function strike(
   victim.hp -= damage
   attacker.cooldown = cooldown
   b.events.push({ type: "strike", id: attacker.id }, { type: "hit", id: victim.id })
+}
+
+/** Move `u` by (dx, dy) unless that lands on a tile `g` blocks. */
+function nudge(g: Grid, u: Unit, dx: number, dy: number): void {
+  if (walkSpeed(g, Math.round(u.x + dx), Math.round(u.y + dy)) === 0) return
+  u.x += dx
+  u.y += dy
+}
+
+const inTower = (p: Peasant) =>
+  p.homeReach === PEASANT.towerReach && dist(p, p.home) <= PEASANT.pickupReach
+
+/** No two units on the same spot: push overlapping pairs apart, half each (mayor excluded). */
+export function separate(b: Battle): void {
+  const units = [
+    ...b.enemies.map((u) => ({ u, g: b.grid })),
+    ...b.peasants.filter((p) => !inTower(p)).map((u) => ({ u, g: b.peasantGrid })),
+  ]
+  for (const [i, a] of units.entries()) {
+    for (const c of units.slice(i + 1)) {
+      const d = dist(a.u, c.u)
+      if (d < UNIT_SPACING) {
+        // same spot: split along a fixed angle per id pair so the result is deterministic
+        const angle = a.u.id * 7 + c.u.id * 3
+        const nx = d > 1e-6 ? (c.u.x - a.u.x) / d : Math.cos(angle)
+        const ny = d > 1e-6 ? (c.u.y - a.u.y) / d : Math.sin(angle)
+        const half = (UNIT_SPACING - d) / 2
+        nudge(a.g, a.u, -nx * half, -ny * half)
+        nudge(c.g, c.u, nx * half, ny * half)
+      }
+    }
+  }
+}
+
+/** Weakest enemy within `range` (by `measure`), ties broken by distance; finishes off the wounded. */
+export function weakestEnemy(
+  b: Battle,
+  from: Unit,
+  range: number,
+  measure: (a: Unit, e: Enemy) => number = dist,
+): Enemy | undefined {
+  let best: Enemy | undefined
+  for (const e of b.enemies) {
+    const better = !best || e.hp < best.hp || (e.hp === best.hp && dist(from, e) < dist(from, best))
+    if (measure(from, e) <= range && better) best = e
+  }
+  return best
 }

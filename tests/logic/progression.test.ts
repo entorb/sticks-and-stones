@@ -3,15 +3,16 @@ import {
   BUILDINGS,
   CHECKPOINTS,
   ENEMIES,
+  PILE_ADVANCE,
   RENOWN,
   REPUTATION,
   TICKS_PER_SEC,
 } from "../../src/logic/balance.ts"
 import { placeBuilding } from "../../src/logic/building.ts"
 import { startWave, stepBattle, winStage } from "../../src/logic/combat.ts"
-import { earnRenown } from "../../src/logic/progression.ts"
+import { buyPileAdvance, earnRenown, nextStage } from "../../src/logic/progression.ts"
 import { newGame } from "../../src/logic/state.ts"
-import { type GameState, Terrain } from "../../src/logic/types.ts"
+import { type GameState, type Profile, Terrain } from "../../src/logic/types.ts"
 
 /** 12×7 grass, hut at (9,2), spawn at (0,3), one rock pile at (6,3), 2 idle peasants. */
 function field(): GameState {
@@ -83,5 +84,19 @@ describe("rocks, loot, renown", () => {
     while (b.result === "running" && b.tick < 2000) stepBattle(s, b, TICKS_PER_SEC)
     expect(b.result).toBe("won")
     expect(second?.rocks).toBeLessThan(BUILDINGS.rockPile.rocks ?? 0)
+  })
+
+  it("the rock pile advance costs Renown and enlarges piles from the next refill", () => {
+    const p: Profile = { renown: PILE_ADVANCE.renown[0] + 1, checkpoint: 1 }
+    expect(buyPileAdvance(p)).toBe(true)
+    expect(p).toEqual({ renown: 1, checkpoint: 1, pileLevel: 1 })
+    expect(buyPileAdvance(p)).toBe(false)
+    const s = field()
+    s.pileLevel = p.pileLevel
+    nextStage(s)
+    const full = (BUILDINGS.rockPile.rocks ?? 0) + PILE_ADVANCE.rocks
+    expect(s.buildings[0]?.rocks).toBe(full)
+    expect(placeBuilding(s, "rockPile", 6, 5)).toBeNull()
+    expect(s.buildings[1]?.rocks).toBe(full)
   })
 })

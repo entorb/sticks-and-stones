@@ -11,18 +11,18 @@ const TAP_SLOP = 10
 interface Opts {
   world: { width: number; height: number }
   focus: { x: number; y: number }
-  /** Screen px kept free for UI above and below the map view. */
-  insets: { top: number; bottom: number }
+  /** Screen px kept free for UI above and below the map view (read again on `refit`). */
+  insets: { top: number; bottom: () => number }
   /** Tap (no drag, no pinch) at a world position. */
   onTap: (worldX: number, worldY: number) => void
 }
 
-/** Drag to pan, pinch / mouse wheel to zoom, tap callback. */
-export function addCameraControls(scene: Scene, { world, focus, insets, onTap }: Opts): void {
+/** Drag to pan, pinch / mouse wheel to zoom, tap callback. Returns `refit` (after inset changes). */
+export function addCameraControls(scene: Scene, { world, focus, insets, onTap }: Opts): () => void {
   const { width: worldW, height: worldH } = world
   const cam = scene.cameras.main
   const fitViewport = (w: number, h: number) =>
-    cam.setViewport(0, insets.top, w, Math.max(1, h - insets.top - insets.bottom))
+    cam.setViewport(0, insets.top, w, Math.max(1, h - insets.top - insets.bottom()))
   fitViewport(scene.scale.width, scene.scale.height)
   cam.setBounds(0, 0, worldW, worldH)
   const fitZoom = () => Math.min(cam.width / worldW, cam.height / worldH)
@@ -72,8 +72,10 @@ export function addCameraControls(scene: Scene, { world, focus, insets, onTap }:
   scene.input.on("wheel", (p: Input.Pointer, _over: unknown, _dx: number, dy: number) => {
     zoomAt(cam.zoom * WHEEL_STEP ** (-dy / 100), p.x, p.y)
   })
-  scene.scale.on("resize", (size: { width: number; height: number }) => {
-    fitViewport(size.width, size.height)
+  const refit = () => {
+    fitViewport(scene.scale.width, scene.scale.height)
     zoomAt(cam.zoom, cam.x + cam.width / 2, cam.y + cam.height / 2)
-  })
+  }
+  scene.scale.on("resize", refit)
+  return refit
 }

@@ -17,9 +17,10 @@ import {
   Terrain,
 } from "../logic/types.ts"
 import { isWall, material, repairWall, wallGrid } from "../logic/walls.ts"
+import { waveSpawn } from "../logic/waves.ts"
 import { BattleView } from "./battleView.ts"
 import { addCameraControls } from "./cameraControls.ts"
-import { loadProfile, saveProfile } from "./profile.ts"
+import { loadProfile, loadVillage, saveProfile, saveVillage } from "./profile.ts"
 import { BAR_H, EV, HUD_H, REG, type Tool } from "./shared.ts"
 import { buildingKey, GRASS_ALT, HUT_KEY, SPAWN_KEY, TERRAIN_KEY, TILE_PX } from "./textures.ts"
 import { choppingWorker } from "./workers.ts"
@@ -56,28 +57,37 @@ export class GameScene extends Scene {
   private buildingLayer!: GameObjects.Container
   private hover!: GameObjects.Graphics
   private path!: GameObjects.Graphics
+  private spawnMark!: GameObjects.Image
   private battle: Battle | null = null
   private view: BattleView | null = null
   private acc = 0
-  private tickMs = TICK_MS
+  /** Off for dev scenarios, so they don't overwrite the real village. */
+  private autosave = true
 
   constructor() {
     super("Game")
   }
 
-  create(data: { seed?: number }): void {
+  /** `resume`: load the autosaved village; else found one at `checkpoint` (default: highest). */
+  create(data: { resume?: boolean; checkpoint?: number }): void {
     // dev only: ?seed=3&stage=2&piles=2&woodcutters=1&stone=0&speed=5&defend (see scenario.ts)
     const dev = import.meta.env.DEV ? new URLSearchParams(location.search) : null
-    this.tickMs = TICK_MS / Number(dev?.get("speed") ?? 1)
     this.profile = (this.registry.get(REG.profile) as Profile | undefined) ?? loadProfile()
-    const seed = data.seed ?? Date.now()
-    this.state = dev?.size ? scenario(dev) : newGame(seed, undefined, this.profile.checkpoint)
+    this.autosave = !dev?.size
+    const saved = data.resume ? loadVillage() : null
+    const at = data.checkpoint ?? this.profile.checkpoint
+    this.state = dev?.size ? scenario(dev) : (saved ?? newGame(Date.now(), undefined, at))
+    this.state.pileLevel = this.profile.pileLevel
+    this.save()
     this.registry.set(REG.profile, this.profile)
     this.registry.set(REG.state, this.state)
     this.registry.set(REG.tool, null)
     this.registry.set(REG.battle, null)
+    this.registry.set(REG.speed, Number(dev?.get("speed") ?? 1))
+    this.registry.set(REG.barH, BAR_H)
     this.battle = null
     this.drawMap()
+    this.spawnMark = this.add.image(0, 0, SPAWN_KEY).setOrigin(0)
     this.path = this.add.graphics()
     this.drawPath()
     this.buildingLayer = this.add.container()
@@ -85,18 +95,23 @@ export class GameScene extends Scene {
     this.drawBuildings()
 
     const { map } = this.state
-    addCameraControls(this, {
+    const refit = addCameraControls(this, {
       world: { width: map.width * TILE_PX, height: map.height * TILE_PX },
       focus: { x: (hutCenter(map).x + 0.5) * TILE_PX, y: (hutCenter(map).y + 0.5) * TILE_PX },
-      insets: { top: HUD_H, bottom: BAR_H },
+      insets: {
+        top: HUD_H,
+        bottom: () => (this.registry.get(REG.barH) as number | undefined) ?? BAR_H,
+      },
       onTap: (wx, wy) => this.tap(Math.floor(wx / TILE_PX), Math.floor(wy / TILE_PX)),
     })
     this.input.on("pointermove", () => this.drawHover())
 
     const onDefend = () => this.startDefense()
     this.game.events.on(EV.defend, onDefend)
+    this.registry.events.on(`changedata-${REG.barH}`, refit)
     this.events.once("shutdown", () => {
       this.game.events.off(EV.defend, onDefend)
+      this.registry.events.off(`changedata-${REG.barH}`, refit)
       this.view?.destroy()
     })
     this.scene.launch("UI")
@@ -115,17 +130,19 @@ export class GameScene extends Scene {
       }
     }
     this.add.image(map.hut.x * TILE_PX, map.hut.y * TILE_PX, HUT_KEY).setOrigin(0)
-    for (const s of map.spawns) this.add.image(s.x * TILE_PX, s.y * TILE_PX, SPAWN_KEY).setOrigin(0)
   }
 
-  /** Dotted enemy route from each spawn to the hut (build phase only), as enemies walk it. */
+  /** Dotted route of the next wave from its spawn to the hut (build phase only), as enemies walk it. */
   private drawPath(): void {
     const { map } = this.state
     const grid = wallGrid(this.state, "enemy")
     const field = flowField(grid, hutTiles(map))
     const hut = hutCenter(map)
     this.path.clear().fillStyle(PATH_COLOR, PATH_ALPHA)
-    for (const s of map.spawns) {
+    const s = waveSpawn(this.state)
+    this.spawnMark.setVisible(s !== undefined)
+    if (s) this.spawnMark.setPosition(s.x * TILE_PX, s.y * TILE_PX)
+    if (s) {
       let pos: Point = s
       for (let n = 0; n < MAX_PATH_LEGS && dist(pos, hut) > 0; n++) {
         const next = lineWalkable(grid, pos, hut) ? hut : waypoint(grid, field, pos)
@@ -181,15 +198,16 @@ export class GameScene extends Scene {
   override update(_time: number, delta: number): void {
     const b = this.battle
     if (!(b && this.view) || b.result !== "running") return
+    const tickMs = TICK_MS / (this.registry.get(REG.speed) as number)
     this.acc += delta
-    while (this.acc >= this.tickMs && b.result === "running") {
-      this.acc -= this.tickMs
+    while (this.acc >= tickMs && b.result === "running") {
+      this.acc -= tickMs
       stepBattle(this.state, b, TICKS_PER_SEC)
       this.view.events(b)
       if (b.events.some((ev) => ev.type === "wall" || ev.type === "empty")) this.drawBuildings()
       this.game.events.emit(EV.changed)
     }
-    this.view.render(b, Math.min(1, this.acc / this.tickMs))
+    this.view.render(b, Math.min(1, this.acc / tickMs))
     if (b.result !== "running") this.endDefense(b)
   }
 
@@ -208,12 +226,16 @@ export class GameScene extends Scene {
 
   private endDefense(b: Battle): void {
     if (b.result === "lost") {
-      const at = this.profile.checkpoint
       this.game.events.emit(
         EV.toast,
-        `The village is lost! The mayor flees and founds a new one at stage ${at}.`,
+        "The village is lost! The mayor flees with their Renown to found a new one.",
       )
-      this.time.delayedCall(LOSS_DELAY_MS, () => this.scene.restart({}))
+      if (this.autosave) saveVillage(null)
+      // back to the menu, where Renown buys advances and a checkpoint is picked
+      this.time.delayedCall(LOSS_DELAY_MS, () => {
+        this.scene.stop("UI")
+        this.scene.start("Menu")
+      })
       return
     }
     this.view?.destroy()
@@ -226,6 +248,7 @@ export class GameScene extends Scene {
     this.drawBuildings()
     const renown = earnRenown(this.profile, won, this.state.stage)
     saveProfile(this.profile)
+    this.save()
     this.drawPath()
     const win = b.flawless ? "Flawless victory!" : "Victory!"
     this.game.events.emit(
@@ -248,8 +271,14 @@ export class GameScene extends Scene {
     }
     this.drawBuildings()
     this.drawPath()
+    this.save()
     this.game.events.emit(EV.changed)
     this.drawHover()
+  }
+
+  /** Autosave the build phase (a battle in progress is not saved). */
+  private save(): void {
+    if (this.autosave) saveVillage(this.state)
   }
 
   /** No tool: repair a wall, or free / reassign a work building's worker. */

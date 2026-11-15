@@ -55,7 +55,13 @@ function snapshot() {
 }
 
 // [name, async (page) => {...}] steps, run in order on one page; add one per new screen
-const SCREENS = [["game", async () => undefined]]
+const SCREENS = [
+  ["menu", async () => undefined],
+  [
+    "game",
+    (page) => page.evaluate(() => globalThis.__game.scene.getScene("Menu").scene.start("Game", {})),
+  ],
+]
 
 const only = arg("screen")
 const devices = arg("device") ? [arg("device")] : Object.keys(DEVICES)

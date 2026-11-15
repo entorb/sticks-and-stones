@@ -23,7 +23,6 @@ export const MAP = {
   forest: { count: 4, size: 14, minDist: 6, maxDist: 13 },
   rock: { count: 3, size: 8, minDist: 6, maxDist: 12 },
   water: { count: 2, size: 10, minDist: 8, maxDist: 16 },
-  spawnCount: 1,
 } as const
 
 /** Walk speed factor per terrain; 0 = blocks movement. */
@@ -66,7 +65,7 @@ export const BUILDINGS: Record<BuildingType, BuildingSpec> = {
     produces: { wood: 0, stone: 0 },
     near: null,
     unlockStage: 1,
-    rocks: 25,
+    rocks: 15,
   },
   palisade: {
     cost: { wood: 5, stone: 0 },
@@ -104,12 +103,15 @@ export const BUILDINGS: Record<BuildingType, BuildingSpec> = {
     hp: 200,
     peasantsPass: true,
     rangeBonus: 3,
-    rocks: 25,
+    rocks: 15,
   },
 }
 
 /** Building a stone wall on a palisade upgrades it in place for this price. */
 export const UPGRADE = { from: "palisade", to: "stoneWall", cost: { wood: 0, stone: 8 } } as const
+
+/** Mayor advance: each level adds `rocks` to every rock pile and tower; `renown[i]` buys level i+1. */
+export const PILE_ADVANCE = { rocks: 10, renown: [5, 20, 50] } as const
 
 /** Wall repair in the build phase: 1 wood (wooden walls) or stone per this many HP. */
 export const REPAIR_HP = 10
@@ -186,6 +188,9 @@ export const ENEMIES: Record<EnemyKind, EnemySpec> = {
 /** Enemies leave their path to attack a peasant or the mayor this close (tiles). */
 export const ENEMY_AGGRO = 2.5
 
+/** Units push each other apart to at least this distance (tiles); peasants in a tower share it. */
+export const UNIT_SPACING = 0.5
+
 /** The mayor lives in the hut and fights in melee; the village is lost when the mayor dies. */
 export const MAYOR = {
   hp: 25,
@@ -199,6 +204,8 @@ export const MAYOR = {
 /** Peasants fetch rocks at piles and throw; workers also hit with their tools. */
 export const PEASANT = {
   hp: 10,
+  /** Share of fallen peasants (rounded up) who were only wounded and rejoin after a won stage. */
+  recover: 0.5,
   /** Tiles per second on grass. */
   speed: 1.5,
   /** Tiles. */
@@ -228,7 +235,7 @@ export const WAVES: WaveSpec[] = [
   { enemies: { raider: 7 }, interval: 18 },
   { enemies: { raider: 9 }, interval: 16 },
   { enemies: { raider: 12 }, interval: 14 },
-  { enemies: { raider: 24 }, interval: 6 },
+  { enemies: { raider: 18 }, interval: 10 },
   { enemies: { raider: 8, torchbearer: 4 }, interval: 14 },
   { enemies: { raider: 9, torchbearer: 5, armored: 2 }, interval: 13 },
   { enemies: { raider: 10, torchbearer: 6, armored: 3 }, interval: 12 },

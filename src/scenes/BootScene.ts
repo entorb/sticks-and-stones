@@ -8,6 +8,8 @@ export class BootScene extends Scene {
 
   create(): void {
     makeTextures(this)
-    this.scene.start("Game")
+    // dev scenario params (see GameScene) skip the menu
+    const dev = import.meta.env.DEV && location.search.length > 1
+    this.scene.start(dev ? "Game" : "Menu")
   }
 }

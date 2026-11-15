@@ -93,3 +93,27 @@
 - Tests for Reputation (win, flawless), arrivals and pile switching; campaign test: a scripted
   build (piles, woodcutters/quarries, palisade ring at 5, stone ring + towers at 10) survives
   stages 1–10 on seeds 1–3.
+
+## M6 – Mayor, Renown, checkpoints, saving
+
+- Start menu: continue the autosaved village or found a new one at any reached checkpoint; shows
+  Renown.
+- The village autosaves in the build phase (after each build/tap and each won stage) as versioned
+  JSON (`logic/save.ts`, migration table for future formats); a lost village deletes the save.
+- Tests: save round trip, broken/newer saves; e2e reloads mid-run and continues.
+
+## M7 – Mobile polish and PWA
+
+- Battle speed toggle (1×/2×/4×) on the Defend! button while a battle runs.
+- Picking a build tool shows a one-line hint; toasts wrap on narrow screens.
+- Map view stays above the build bar when it wraps into two rows (phones, stage 5+).
+- "Install as app" link in the menu when the browser offers install; service worker updates
+  itself on the next load.
+- E2E: menu button counts include the Rock piles advance.
+
+## Fun pass
+
+- Each wave comes from a random point on the map edge; marker and dotted route show where.
+- Half of the fallen peasants (rounded up) recover after a won stage.
+- Rock piles and towers hold 15 rocks; wave 5 is 18 raiders, slower; first pile advance 5 Renown.
+- A lost village goes back to the menu, where Renown buys advances.

@@ -9,7 +9,7 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
 - Read PLAN.md and this file at the start of each session. Work milestone by milestone.
 - Use context7 for current Phaser 4 APIs (most web examples are Phaser 3). Use American English.
 - Missing design detail: pick the simplest option that fits PLAN.md, note it in `DECISIONS.md`.
-- Each milestone: entry in `CHANGELOG.md`, all checks green, screenshot reviewed.
+- Each milestone: entry in `CHANGELOG.md`, checks green (see paused list below), screenshot reviewed.
 - Debug logic headless first (0.1 s, no browser): `node scripts/sim.ts seed=3 piles=2
   woodcutters=1 stone=0 palisade=3 every=50` prints text frames (`asciiBattle`: map + units, legend in
   `logic/scenario.ts`). Node runs `.ts` natively; own scripts in `tmp/*.ts` import `../src/logic/*.ts`.
@@ -31,30 +31,33 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
   (stage 10), wall HP/breaking/repair/upgrade, flawless +2 Rep, torchbearer/armored/ram, waves
   1–10 with mini bosses at 5 and 10. See `CHANGELOG.md`, `DECISIONS.md`.
 - Economy (owner, other session): no Reputation wave growth any more; arrivals
-  `1 + floor(rep / 3)`; rock piles and towers hold `rocks: 25`, refilled each build phase
+  `1 + floor(rep / 3)`; rock piles and towers hold `rocks: 15` (+10 per Renown pile advance), refilled each build phase
   (`nextStage`), no stockpile stone per throw; rising build cost +50% per copy (walls flat).
 - Parts of M6 already done: Renown (`earnRenown`, `RENOWN`), `CHECKPOINTS` start packages
   (`newGame(seed, map, checkpoint)`), loss refounds at the highest checkpoint, profile saved in
   `localStorage` (`scenes/profile.ts`, versioned `v: 1`), HUD shows Renown.
   Still open for M6: menu scene (continue / new village / choose checkpoint), autosave + load of
   the current village, save migration function, round-trip test, e2e reload mid-run.
-- M5 done (uncommitted): pile switching fix, `tests/logic/campaign.test.ts` (build bot survives
-  stages 1–10, seeds 1–3), Reputation/arrival tests in `progression.test.ts`. Balance finding for
-  the owner: the bot also wins 1–10 **without any walls** and hoards 200+ stone; no peasant dies.
-  Walls add nothing yet; waves 6–10 likely need to be harder (owner to decide). `tmp/bot.ts`
-  (env `NOWALL=1`, `PP=<peasants per pile>`, `F=<every> ST=<stage>` prints frames) is the dev copy.
-- **Next:** owner balance decision, then M6 rest (menu, autosave/load, migration, round trip).
-- **Paused by the owner** until the game is up and running: cspell and rewriting old unit tests.
-  Current tests: `walls`, `progression`, `campaign` in `tests/logic/` (pass). The
-  other files in `tests/logic/` fail (old 1-tile keep layout, `keep` in `helpers.ts`,
-  `flowField(map, goal)`, `throwers`). Don't fix them unless asked; when asked, rewrite them
-  against the current logic (hut is `MAP.hutSize`² at `map.hut`, `flowField(grid, goals[])`,
-  `Battle.peasants`/`mayor`, result `lost` = mayor dead). New features get new test files.
-  Before each commit keep lint, typecheck of `src/`, knip, e2e green and run current tests:
-  `scripts/chk_js_format.sh && pnpm exec tsc --noEmit | grep -v "^tests/logic"; pnpm exec vitest run tests/logic/walls.test.ts tests/logic/progression.test.ts tests/logic/campaign.test.ts; scripts/chk_js_e2e.sh && scripts/chk_js_dead.sh && scripts/chk_pre-commit.sh`.
-- Known gaps (owner may raise): on phones the 2nd build-bar row covers the map bottom; spawns are
+- M5 committed (`9dc530a`): pile switching fix, `tests/logic/campaign.test.ts` (build bot
+  survives stages 1–10, seeds 1–3). Balance finding for the owner: the bot also wins 1–10
+  **without any walls** and hoards 200+ stone; walls add nothing yet, waves 6–10 likely need to be
+  harder (owner to decide). `tmp/bot.ts` (env `NOWALL=1`, `PP=<peasants per pile>`,
+  `F=<every> ST=<stage>` prints frames) is the dev copy.
+- M6 done (uncommitted): `MenuScene` (Boot → Menu → Game; dev URL params skip it), autosave in
+  `scenes/profile.ts` (`loadVillage`/`saveVillage`), `logic/save.ts` (`SAVE_VERSION`,
+  `MIGRATIONS`), `tests/logic/save.test.ts`, e2e reload test. E2E clicks the menu first (`menu()`
+  helper in `smoke.spec.ts`).
+- M7 done (uncommitted): speed toggle (`REG.speed`), tool hints, `REG.barH` camera inset,
+  install link (`installPrompt` in `MenuScene`), SW `autoUpdate`.
+- **Next:** PLAN "Then" list (cards → Renown tree → stages 11–20), plus the open balance decision.
+- **Paused by the owner** until the game is up and running: unit tests (don't write, run or fix
+  them; `tests/logic/` may be stale), cspell, Sonar. Milestone ✅ test criteria in PLAN.md wait
+  too. Before each commit keep only lint, typecheck of `src/`, knip and e2e green:
+  `scripts/chk_js_format.sh && pnpm exec tsc --noEmit | grep -v "^tests/"; scripts/chk_js_e2e.sh && scripts/chk_js_dead.sh && scripts/chk_pre-commit.sh`.
+- Known gaps (owner may raise): spawns are
   grouped by kind, not interleaved; walled-in peasants stay put; stone walls give +2 range only
   to peasants who happen to stand on them (no wall posts yet).
+- E2E `menu(page, i, n)`: `n` counts every menu button incl. the Rock piles advance.
 - Headless Chromium runs ticks slowly: screenshot a battle with `waitForFunction` on
   `scene.getScene("Game").battle.tick >= N`, not a fixed timeout (`tmp/walls-tick.mjs`).
 - Owner workflow: plays the dev build, reports issues in short messages, says "continue" for the
@@ -70,7 +73,7 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
 - `src/logic/balance.ts`: **all** numbers (costs, HP, damage, wave sizes). No magic numbers elsewhere.
   Balance changes only there, explained in the commit message.
 - `src/scenes/`: rendering + input only; read `GameState`, send commands to `logic/`.
-- Files < 300 lines. Every logic feature gets a test in `tests/logic/<module>.test.ts`.
+- Files < 300 lines. Logic features get a test in `tests/logic/<module>.test.ts` (paused for now).
 - Never disable a check, lower strictness or skip tests to get green. Fix the cause.
 - Keep dependencies minimal, pinned, lockfile committed.
 
@@ -105,7 +108,7 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
 ## Layout
 
 - `src/main.ts`: Phaser config (`Scale.RESIZE`, portrait + landscape), dev `globalThis.__game`.
-- `src/scenes/`: `BootScene` (builds textures) → `GameScene` (map, buildings, taps) + `UIScene`
+- `src/scenes/`: `BootScene` (builds textures) → `MenuScene` (continue / new village at a checkpoint) → `GameScene` (map, buildings, taps) + `UIScene`
   (HUD top, build bar bottom, toasts; restarts on resize). They share `GameState` and the selected
   tool via `registry` (`shared.ts` `REG`) and signal via `game.events` (`EV.changed`, `EV.toast`, `EV.defend`; `REG.battle` = running battle or null).
   Interactive UI panels block taps to the map (Phaser `globalTopOnly`).
@@ -119,13 +122,13 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
   `TICKS_PER_SEC`, `ENEMIES`, `ENEMY_AGGRO`, `MAYOR`, `PEASANT`, `WAVES`,
   ), `rng.ts`,
   `types.ts`, `map.ts` (`generateMap`, `hutCenter`, `hutTiles`, `isHut`), `state.ts` (`newGame`, `idlePeasants`), `building.ts`
-  (`buildCost`, `placeError`, `placeBuilding`, `toggleWorkers`), `economy.ts` (`payout`),
+  (`buildCost`, `placeError`, `placeBuilding`, `rockCapacity`, `toggleWorkers`), `economy.ts` (`payout`),
   `progression.ts` (`nextStage` refills piles, `earnRenown`; `combat.ts` `winStage` adds kill loot, Reputation, arrivals), `pathing.ts` (`flowField(grid, goals[])` 8-dir Dijkstra,
   `nextTile`, `lineWalkable`, `waypoint` = straight-line shortcut; all take a `Grid` = map + wall
   `costs`, Infinity blocks), `walls.ts` (`wallGrid(s, side)`, `walkGrids` → `Battle.grid`,
   `peasantGrid`, `field`; `hitWall`, `repairWall`, `material`), `waves.ts` (`spawnSchedule`), `scenario.ts` (dev: `scenario(params)`, `asciiBattle`),
   `battle.ts` (unit types `Enemy`/`Peasant`/mayor `Unit` with id 0, `moveToward`, `strike`,
-  `reach` = melee distance, mayor counted from the hut wall), `defenders.ts`
+  `reach` = melee distance, mayor counted from the hut wall, `separate` = unit spacing, `weakestEnemy`), `defenders.ts`
   (all peasants fetch rocks at the nearest pile and throw, rocks, mayor), `combat.ts` (`startWave`, `stepBattle` = enemies,
   `simulateWave`, `winStage`).
 - `tests/logic/` (Vitest, `vitest.config.ts`; `helpers.ts` `stateFrom(rows)` builds a state from an

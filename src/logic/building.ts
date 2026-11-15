@@ -1,7 +1,8 @@
-import { BUILDINGS, COST_GROWTH, UPGRADE } from "./balance.ts"
+import { BUILDINGS, COST_GROWTH, PILE_ADVANCE, UPGRADE } from "./balance.ts"
 import { isHut, tileAt } from "./map.ts"
 import { buildingAt, idlePeasants } from "./state.ts"
 import { type BuildingType, type GameState, type Resources, Terrain } from "./types.ts"
+import { waveSpawn } from "./waves.ts"
 
 export type PlaceError = "locked" | "terrain" | "occupied" | "notNear" | "cost"
 
@@ -18,6 +19,12 @@ export function buildCost(s: GameState, type: BuildingType): Resources {
   const f =
     hp === undefined ? 1 + COST_GROWTH * s.buildings.filter((b) => b.type === type).length : 1
   return { wood: Math.round(cost.wood * f), stone: Math.round(cost.stone * f) }
+}
+
+/** Rocks a building of `type` holds when full (with the mayor's pile advance); undefined = none. */
+export function rockCapacity(s: GameState, type: BuildingType): number | undefined {
+  const base = BUILDINGS[type].rocks
+  return base === undefined ? undefined : base + (s.pileLevel ?? 0) * PILE_ADVANCE.rocks
 }
 
 /** Building `type` at (x, y) upgrades the palisade there. */
@@ -38,7 +45,8 @@ export function placeError(
   const spec = BUILDINGS[type]
   if (s.stage < spec.unlockStage) return "locked"
   if (tileAt(s.map, x, y) !== Terrain.Grass) return "terrain"
-  const spawn = s.map.spawns.some((p) => p.x === x && p.y === y)
+  const w = waveSpawn(s)
+  const spawn = w?.x === x && w.y === y
   const taken = buildingAt(s, x, y) && !isUpgrade(s, type, x, y)
   if (isHut(s.map, x, y) || spawn || taken) return "occupied"
   if (spec.near !== null && !hasNeighbor(s, x, y, spec.near)) return "notNear"
@@ -67,7 +75,7 @@ export function placeBuilding(
     return null
   }
   const workers = idlePeasants(s) >= spec.workers ? spec.workers : 0
-  s.buildings.push({ id: s.nextId, type, x, y, workers, hp: spec.hp, rocks: spec.rocks })
+  s.buildings.push({ id: s.nextId, type, x, y, workers, hp: spec.hp, rocks: rockCapacity(s, type) })
   s.nextId += 1
   return null
 }

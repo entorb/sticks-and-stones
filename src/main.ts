@@ -2,6 +2,7 @@ import { AUTO, Game, Scale, type Types } from "phaser"
 import { VIEW } from "./logic/balance.ts"
 import { BootScene } from "./scenes/BootScene.ts"
 import { GameScene } from "./scenes/GameScene.ts"
+import { type InstallPromptEvent, installPrompt, MenuScene } from "./scenes/MenuScene.ts"
 import { UIScene } from "./scenes/UIScene.ts"
 
 const config: Types.Core.GameConfig = {
@@ -15,8 +16,14 @@ const config: Types.Core.GameConfig = {
     autoCenter: Scale.CENTER_BOTH,
   },
   input: { activePointers: 3 },
-  scene: [BootScene, GameScene, UIScene],
+  scene: [BootScene, MenuScene, GameScene, UIScene],
 }
+
+// Chrome fires this once, maybe before the menu exists; MenuScene offers the stored prompt.
+globalThis.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault()
+  installPrompt.event = e as InstallPromptEvent
+})
 
 document.addEventListener("DOMContentLoaded", () => {
   const game = new Game(config)
