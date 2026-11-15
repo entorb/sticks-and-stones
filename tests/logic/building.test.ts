@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { BUILDINGS, START } from "../../src/logic/balance.ts"
+import { BUILDINGS, CHECKPOINTS } from "../../src/logic/balance.ts"
 import { placeBuilding, placeError, toggleWorkers } from "../../src/logic/building.ts"
 import { idlePeasants } from "../../src/logic/state.ts"
 import { stateFrom } from "./helpers.ts"
 
 // keep at (0,0)-(1,1)
 const ROWS = ["......F", "......F", "......W", "R......"]
+const START = CHECKPOINTS[0]
 
 describe("placeError", () => {
   it("allows a woodcutter on grass next to forest", () => {

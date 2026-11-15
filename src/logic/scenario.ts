@@ -72,7 +72,7 @@ const BUILDING_CH: Record<BuildingType, string> = {
 /** Map as text: terrain . T ^ ~, hut H, buildings w q o, walls | g # t; units M mayor, W worker, P idle
  * peasant (lowercase = carrying a rock), E enemy. Then one line per unit. */
 export function asciiBattle(s: GameState, b: Battle): string {
-  const rows = Array.from({ length: s.map.height }, (_, y) =>
+  const rows = Array.from({ length: s.map.height }, (_row, y) =>
     Array.from({ length: s.map.width }, (_, x) =>
       isHut(s.map, x, y) ? "H" : (TERRAIN_CH[s.map.tiles[y * s.map.width + x] ?? 0] ?? "?"),
     ),

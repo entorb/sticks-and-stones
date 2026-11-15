@@ -18,8 +18,8 @@ describe("generateMap", () => {
     const map = generateMap(7)
     expect(map.tiles).toHaveLength(MAP.width * MAP.height)
     expect(map.hut).toEqual({ x: 15, y: 11 })
-    for (let dy = 0; dy < MAP.keepSize; dy++)
-      for (let dx = 0; dx < MAP.keepSize; dx++)
+    for (let dy = 0; dy < MAP.hutSize; dy++)
+      for (let dx = 0; dx < MAP.hutSize; dx++)
         expect(tileAt(map, map.hut.x + dx, map.hut.y + dy)).toBe(Terrain.Grass)
   })
 

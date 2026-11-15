@@ -98,12 +98,12 @@ export const newUnit = (id: number, p: Point, hp: number): Unit => ({
   cooldown: 0,
 })
 
-/** Step `u` toward `target` at `speed` tiles/s, slowed by the terrain it stands on. */
-export function moveToward(map: GameMap, u: Unit, target: Point, speed: number, tps: number): void {
+/** Step `u` toward `target` by `perTick` tiles (speed / tps), slowed by the terrain it stands on. */
+export function moveToward(map: GameMap, u: Unit, target: Point, perTick: number): void {
   const d = dist(u, target)
   if (d < 1e-6) return
   const terrain = walkSpeed(map, Math.round(u.x), Math.round(u.y)) || 1
-  const f = Math.min(1, (speed * terrain) / tps / d)
+  const f = Math.min(1, (perTick * terrain) / d)
   u.x += (target.x - u.x) * f
   u.y += (target.y - u.y) * f
 }
@@ -113,8 +113,7 @@ export function strike(
   b: Battle,
   attacker: Unit,
   victim: Unit,
-  damage: number,
-  cooldown: number,
+  { damage, cooldown }: { damage: number; cooldown: number },
 ): void {
   if (attacker.cooldown > 0) return
   victim.hp -= damage

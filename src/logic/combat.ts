@@ -85,7 +85,7 @@ function enemyAct(s: GameState, b: Battle, e: Enemy, tps: number): void {
   const spec = ENEMIES[e.kind]
   const p = prey(b, e)
   if (p && reach(e, p) <= spec.range) {
-    strike(b, e, p, spec.damage, spec.cooldown)
+    strike(b, e, p, spec)
     return
   }
   const wall = p ? undefined : wallAhead(s, b, e)
@@ -96,7 +96,7 @@ function enemyAct(s: GameState, b: Battle, e: Enemy, tps: number): void {
   }
   const hut = hutCenter(s.map)
   const path = () => (lineWalkable(b.grid, e, hut) ? hut : (waypoint(b.grid, b.field, e) ?? hut))
-  moveToward(s.map, e, p ?? wall ?? path(), spec.speed, tps)
+  moveToward(s.map, e, p ?? wall ?? path(), spec.speed / tps)
 }
 
 function removeDead(s: GameState, b: Battle): void {

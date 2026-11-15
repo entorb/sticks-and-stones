@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { START } from "../../src/logic/balance.ts"
+import { CHECKPOINTS } from "../../src/logic/balance.ts"
 import { placeBuilding, toggleWorkers } from "../../src/logic/building.ts"
 import { payout, production } from "../../src/logic/economy.ts"
 import { nextStage } from "../../src/logic/progression.ts"
 import { stateFrom } from "./helpers.ts"
 
 const ROWS = ["......F", "......F", "......W", "R......"]
+const START = CHECKPOINTS[0]
 
 describe("payout", () => {
   it("pays staffed woodcutter and quarry once", () => {

@@ -40,12 +40,12 @@ const canStep = (map: Grid, x: number, y: number, d: Point): boolean =>
   (d.x === 0 || d.y === 0 || (open(map, x + d.x, y) && open(map, x, y + d.y)))
 
 /** Remove and return the open tile with the lowest distance. */
-function popMin(open: number[], dist: number[]): number {
+function popMin(queue: number[], dist: number[]): number {
   let best = 0
-  for (let k = 1; k < open.length; k++) {
-    if ((dist[open[k] ?? 0] ?? 0) < (dist[open[best] ?? 0] ?? 0)) best = k
+  for (let k = 1; k < queue.length; k++) {
+    if ((dist[queue[k] ?? 0] ?? 0) < (dist[queue[best] ?? 0] ?? 0)) best = k
   }
-  return open.splice(best, 1)[0] ?? 0
+  return queue.splice(best, 1)[0] ?? 0
 }
 
 /** Walking cost from every tile to the nearest `goals` tile (Dijkstra, 8 neighbors); Infinity = no path. */

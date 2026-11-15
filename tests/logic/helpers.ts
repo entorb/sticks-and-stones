@@ -14,7 +14,7 @@ export function mapFrom(rows: string[], keep = { x: 0, y: 0 }): GameMap {
     width: rows[0]?.length ?? 0,
     height: rows.length,
     tiles: rows.flatMap((r) => [...r].map((c) => CHAR[c] ?? Terrain.Grass)),
-    keep,
+    hut: keep,
     spawns: [],
   }
 }

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest"
+import { hutTiles } from "../../src/logic/map.ts"
 import { flowField, nextTile } from "../../src/logic/pathing.ts"
 import { mapFrom } from "./helpers.ts"
 
 describe("flowField", () => {
   const map = mapFrom(["......", "FFR...", "......"], { x: 4, y: 0 })
-  const field = flowField(map)
+  const field = flowField(map, hutTiles(map))
   const at = (x: number, y: number) => field[y * map.width + x]
 
   it("is 0 on the keep and grows with distance", () => {
@@ -22,7 +23,7 @@ describe("flowField", () => {
 describe("nextTile", () => {
   it("walks around a rock wall into the keep", () => {
     const map = mapFrom(["......", "..R...", "..R..."], { x: 4, y: 0 })
-    const field = flowField(map)
+    const field = flowField(map, hutTiles(map))
     let p = { x: 0, y: 2 }
     const path = [p]
     for (let n = nextTile(map, field, p.x, p.y); n; n = nextTile(map, field, p.x, p.y)) {
@@ -31,6 +32,6 @@ describe("nextTile", () => {
     }
     expect(path[path.length - 1]).toEqual({ x: 4, y: 0 })
     expect(path.some((q) => q.x === 2 && q.y > 0)).toBe(false)
-    expect(path).toHaveLength(7)
+    expect(path).toHaveLength(6) // no diagonal past the rock corner
   })
 })

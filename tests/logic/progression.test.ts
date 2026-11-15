@@ -25,7 +25,7 @@ function field(): GameState {
   }
   const s = newGame(1, map)
   s.peasants = 2
-  expect(placeBuilding(s, "rockPile", 6, 3)).toBeNull()
+  if (placeBuilding(s, "rockPile", 6, 3) !== null) throw new Error("rock pile not placed")
   return s
 }
 

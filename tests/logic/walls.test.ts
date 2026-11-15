@@ -19,7 +19,10 @@ function walled(rows: number[]): GameState {
   s.stage = 99
   s.peasants = 0
   s.res = { wood: 1000, stone: 1000 }
-  for (const y of rows) expect(placeBuilding(s, "palisade", 5, y)).toBeNull()
+  for (const y of rows) {
+    if (placeBuilding(s, "palisade", 5, y) !== null)
+      throw new Error(`palisade at y=${y} not placed`)
+  }
   return s
 }
 

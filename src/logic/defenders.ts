@@ -59,7 +59,7 @@ export const mayorAt = (center: Point) => newUnit(MAYOR_ID, center, MAYOR.hp)
 function walkHome(b: Battle, p: Peasant, tps: number): void {
   const g = b.peasantGrid
   const target = lineWalkable(g, p, p.home) ? p.home : (waypoint(g, p.field, p) ?? p.home)
-  moveToward(g, p, target, PEASANT.speed, tps)
+  moveToward(g, p, target, PEASANT.speed / tps)
 }
 
 /** Throw range, plus the bonus of a stone wall or tower the peasant stands on. */
@@ -84,7 +84,7 @@ function peasantMoves(s: GameState, b: Battle, p: Peasant, tps: number): void {
   if (!p.rock && atPile) p.rock = takeRock(s, b, p) || switchPile(s, b, p)
   const foe = p.rock ? nearestEnemy(b, p.home, PEASANT.alertRange) : undefined
   if (foe && dist(p, foe) <= throwRange(s, p)) return
-  if (foe && lineWalkable(b.peasantGrid, p, foe)) moveToward(s.map, p, foe, PEASANT.speed, tps)
+  if (foe && lineWalkable(b.peasantGrid, p, foe)) moveToward(s.map, p, foe, PEASANT.speed / tps)
   else if (!(atPile || p.rock)) walkHome(b, p, tps)
 }
 
@@ -117,13 +117,13 @@ function switchPile(s: GameState, b: Battle, p: Peasant): false {
 function toolFight(s: GameState, b: Battle, p: Peasant, tps: number): boolean {
   const close = weakestEnemy(b, p, PEASANT.toolRange)
   if (close) {
-    strike(b, p, close, PEASANT.toolDamage, PEASANT.toolCooldown)
+    strike(b, p, close, { damage: PEASANT.toolDamage, cooldown: PEASANT.toolCooldown })
     return true
   }
   if (p.rock || (p.field.length > 0 && (pileOf(s, p)?.rocks ?? 0) > 0)) return false
   const foe = nearestEnemy(b, p.home, PEASANT.alertRange)
   if (!(foe && lineWalkable(b.peasantGrid, p, foe))) return false
-  moveToward(s.map, p, foe, PEASANT.speed, tps)
+  moveToward(s.map, p, foe, PEASANT.speed / tps)
   return true
 }
 
@@ -206,5 +206,5 @@ export function flyRocks(b: Battle): void {
 /** The mayor hits the weakest enemy in reach. */
 export function mayorFights(b: Battle): void {
   const target = weakestEnemy(b, b.mayor, MAYOR.range, reach)
-  if (target) strike(b, b.mayor, target, MAYOR.damage, MAYOR.cooldown)
+  if (target) strike(b, b.mayor, target, { damage: MAYOR.damage, cooldown: MAYOR.cooldown })
 }
