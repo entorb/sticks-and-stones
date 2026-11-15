@@ -10,6 +10,6 @@
 - **Art**: procedural placeholder textures (`src/scenes/textures.ts`) instead of Kenney for now,
   no asset download needed. Swap in Kenney tiles later.
 - **Spawns**: 1 edge spawn for now (`MAP.spawnCount`), more in later stages. Spawns are always
-  reachable from the keep without crossing water.
-- **Forest and rock** (can enemies walk through?): decided in M3 (pathing). Map generation only guarantees water
-  does not cut off spawns.
+  reachable from the keep over walkable terrain.
+- **Terrain movement** (`WALK_SPEED` in `balance.ts`): forest = 50 % walk speed, rock and water
+  block movement.

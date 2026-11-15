@@ -1,5 +1,7 @@
 // Single source of truth for all game numbers.
 
+import { Terrain } from "./types.ts"
+
 /** Design viewport; the canvas resizes to the window (Scale.RESIZE). */
 export const VIEW = { width: 960, height: 600 } as const
 
@@ -16,3 +18,11 @@ export const MAP = {
   water: { count: 2, size: 10, minDist: 8, maxDist: 16 },
   spawnCount: 1,
 } as const
+
+/** Walk speed factor per terrain; 0 = blocks movement. */
+export const WALK_SPEED: Record<Terrain, number> = {
+  [Terrain.Grass]: 1,
+  [Terrain.Forest]: 0.5,
+  [Terrain.Rock]: 0,
+  [Terrain.Water]: 0,
+}

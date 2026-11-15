@@ -1,4 +1,4 @@
-import { MAP } from "./balance.ts"
+import { MAP, WALK_SPEED } from "./balance.ts"
 import { createRng } from "./rng.ts"
 import { type GameMap, type Point, Terrain } from "./types.ts"
 
@@ -54,7 +54,7 @@ function growCluster(map: GameMap, rng: Rng, terrain: Terrain, c: Cluster): void
   }
 }
 
-/** Tiles reachable from the keep without crossing water. */
+/** Tiles reachable from the keep over walkable terrain (WALK_SPEED > 0). */
 export function reachableFromKeep(map: GameMap): Set<number> {
   const seen = new Set<number>([map.keep.y * map.width + map.keep.x])
   const queue: Point[] = [map.keep]
@@ -63,7 +63,7 @@ export function reachableFromKeep(map: GameMap): Set<number> {
       const n = { x: p.x + d.x, y: p.y + d.y }
       const t = tileAt(map, n.x, n.y)
       const i = n.y * map.width + n.x
-      if (t === undefined || t === Terrain.Water || seen.has(i)) continue
+      if (t === undefined || WALK_SPEED[t] === 0 || seen.has(i)) continue
       seen.add(i)
       queue.push(n)
     }
