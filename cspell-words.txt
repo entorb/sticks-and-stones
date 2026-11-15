@@ -2,7 +2,9 @@ colocates
 entorb
 Kenney
 knip
+lerp
 pathing
+pgrep
 prek
 Qube
 roguelike
@@ -13,3 +15,4 @@ unstaff
 Unstaffed
 unstaffs
 vitest
+yoyo

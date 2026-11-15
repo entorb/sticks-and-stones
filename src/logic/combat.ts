@@ -28,9 +28,21 @@ export interface Thrower {
   cooldown: number
 }
 
+/** A thrown rock; it hits (applies damage) when `ticks` reaches 0. */
+export interface Rock {
+  id: number
+  from: Point
+  /** Where the target is now (follows it while alive). */
+  to: Point
+  targetId: number
+  ticks: number
+  total: number
+}
+
 /** Things that happened this tick, for rendering. */
 export type BattleEvent =
-  | { type: "throw"; from: Point; to: Point }
+  | { type: "throw"; throwerId: number }
+  | { type: "hit"; id: number }
   | { type: "enemyDied"; id: number }
   | { type: "peasantDied"; id: number }
 
@@ -40,6 +52,7 @@ export interface Battle {
   spawns: Spawn[]
   enemies: Enemy[]
   throwers: Thrower[]
+  rocks: Rock[]
   /** Throws left before the next stone is taken from the stockpile. */
   throwsLeft: number
   nextId: number
@@ -73,6 +86,7 @@ export function startWave(s: GameState): Battle {
     spawns: spawnSchedule(s.stage),
     enemies: [],
     throwers: manPiles(s),
+    rocks: [],
     throwsLeft: 0,
     nextId: 1,
     result: "running",
@@ -147,19 +161,58 @@ function useStone(s: GameState, b: Battle): boolean {
   return true
 }
 
-function throwRocks(s: GameState, b: Battle): void {
+/** Damage already flying toward each enemy. */
+function pendingDamage(b: Battle): Map<number, number> {
+  const out = new Map<number, number>()
+  for (const r of b.rocks) out.set(r.targetId, (out.get(r.targetId) ?? 0) + PEASANT.throwDamage)
+  return out
+}
+
+/** Nearest enemy in range that incoming rocks won't already kill. */
+function pickTarget(b: Battle, t: Thrower, pending: Map<number, number>): Enemy | undefined {
+  let target: Enemy | undefined
+  for (const e of b.enemies) {
+    const doomed = e.hp <= (pending.get(e.id) ?? 0)
+    if (doomed || dist(t, e) > PEASANT.throwRange) continue
+    if (!target || dist(t, e) < dist(t, target)) target = e
+  }
+  return target
+}
+
+function throwRocks(s: GameState, b: Battle, tps: number): void {
+  const pending = pendingDamage(b)
   for (const t of b.throwers) {
     t.cooldown = Math.max(0, t.cooldown - 1)
     if (t.cooldown > 0) continue
-    let target: Enemy | undefined
-    for (const e of b.enemies) {
-      if (dist(t, e) <= PEASANT.throwRange && (!target || dist(t, e) < dist(t, target))) target = e
-    }
+    const target = pickTarget(b, t, pending)
     if (!(target && useStone(s, b))) continue
-    target.hp -= PEASANT.throwDamage
+    const total = Math.max(1, Math.ceil((dist(t, target) / PEASANT.rockSpeed) * tps))
+    b.rocks.push({
+      id: b.nextId,
+      from: { x: t.x, y: t.y },
+      to: { x: target.x, y: target.y },
+      targetId: target.id,
+      ticks: total,
+      total,
+    })
+    b.nextId += 1
+    pending.set(target.id, (pending.get(target.id) ?? 0) + PEASANT.throwDamage)
     t.cooldown = PEASANT.throwCooldown
-    b.events.push({ type: "throw", from: { x: t.x, y: t.y }, to: { x: target.x, y: target.y } })
+    b.events.push({ type: "throw", throwerId: t.id })
   }
+}
+
+/** Rocks fly toward their target and deal damage on arrival. */
+function flyRocks(b: Battle): void {
+  for (const r of b.rocks) {
+    const e = b.enemies.find((x) => x.id === r.targetId)
+    if (e) r.to = { x: e.x, y: e.y }
+    r.ticks -= 1
+    if (r.ticks > 0 || !e) continue
+    e.hp -= PEASANT.throwDamage
+    b.events.push({ type: "hit", id: e.id })
+  }
+  b.rocks = b.rocks.filter((r) => r.ticks > 0)
 }
 
 function removeDead(s: GameState, b: Battle): void {
@@ -180,7 +233,8 @@ export function stepBattle(s: GameState, b: Battle, tps: number): void {
   spawnEnemies(s, b)
   moveEnemies(s, b, tps)
   if (b.result !== "running") return
-  throwRocks(s, b)
+  flyRocks(b)
+  throwRocks(s, b, tps)
   removeDead(s, b)
   b.tick += 1
   if (b.spawns.length === 0 && b.enemies.length === 0) b.result = "won"

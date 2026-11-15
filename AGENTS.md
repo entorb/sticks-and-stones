@@ -10,7 +10,10 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
 - Use context7 for current Phaser 4 APIs (most web examples are Phaser 3). Use American English.
 - Missing design detail: pick the simplest option that fits PLAN.md, note it in `DECISIONS.md`.
 - Each milestone: entry in `CHANGELOG.md`, all checks green, screenshot reviewed.
-- Put debugging scripts in `./tmp/` (gitignored), not `/tmp/`.
+- Put debugging scripts in `./tmp/` (gitignored), not `/tmp/`. Debug in the browser: `pnpm dev`, then
+  Playwright `page.evaluate` on `globalThis.__game` (e.g. `scene.getScene("Game").state`); logic
+  modules import as `/sticks-and-stones/logic/<module>.ts`. Stop the dev server with
+  `pgrep -f "[v]ite/config.dev" | xargs -r kill` (the brackets keep it from killing the shell).
 - Update this file after research or when a gotcha cost time.
 - Git commits: subject line only (`<type>: <Description>`), never a Claude `Co-Authored-By` trailer.
 
@@ -50,7 +53,8 @@ vite-plugin-pwa. Template/sister project: `../raptor` (same tooling).
   tool via `registry` (`shared.ts` `REG`) and signal via `game.events` (`EV.changed`, `EV.toast`).
   Interactive UI panels block taps to the map (Phaser `globalTopOnly`).
   Defend! → `GameScene` runs the battle in fixed ticks (`TICKS_PER_SEC`) in `update()`;
-  `battleView.ts` draws enemies (interpolated `px/py` → `x/y`), throwers and flying rocks.
+  `battleView.ts` draws enemies (interpolated `px/py` → `x/y`, HP bars), throwers and rocks
+  (`Battle.rocks`, arc). Build phase: dotted enemy route + rock pile range circle.
   `textures.ts`: procedural art (`TILE_PX`, texture keys). `cameraControls.ts`: viewport between
   the UI bars (`HUD_H`, `BAR_H`), drag pan, pinch + wheel zoom, tap callback (`TAP_SLOP`).
 - `src/logic/`: `balance.ts` (`MAP`, `WALK_SPEED`, `START`, `BUILDINGS`, `SELL_REFUND`), `rng.ts`,

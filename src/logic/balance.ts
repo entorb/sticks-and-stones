@@ -79,6 +79,8 @@ export const PEASANT = {
   throwDamage: 4,
   /** Ticks between throws. */
   throwCooldown: 10,
+  /** Rock flight speed, tiles per second. */
+  rockSpeed: 8,
   /** One stone from the stockpile per this many throws. */
   throwsPerStone: 5,
 } as const

@@ -1,5 +1,5 @@
 import { type GameObjects, Scene } from "phaser"
-import { BUILDINGS, MAP, TICKS_PER_SEC } from "../logic/balance.ts"
+import { BUILDINGS, MAP, PEASANT, TICKS_PER_SEC } from "../logic/balance.ts"
 import {
   type PlaceError,
   placeBuilding,
@@ -8,6 +8,7 @@ import {
   toggleWorkers,
 } from "../logic/building.ts"
 import { type Battle, startWave, stepBattle, winStage } from "../logic/combat.ts"
+import { flowField, nextTile } from "../logic/pathing.ts"
 import { buildingAt, newGame } from "../logic/state.ts"
 import { type BuildingType, type GameState, Terrain } from "../logic/types.ts"
 import { BattleView } from "./battleView.ts"
@@ -20,6 +21,9 @@ const LOSS_DELAY_MS = 2500
 const UNSTAFFED_ALPHA = 0.5
 const HOVER_OK = 0x7c_fc_00
 const HOVER_BAD = 0xff_3b_30
+const PATH_COLOR = 0xf4_e9_c8
+const PATH_ALPHA = 0.55
+const PATH_DOT = 3
 
 const ERROR_TEXT: Record<PlaceError, string> = {
   locked: "Not unlocked yet",
@@ -37,6 +41,7 @@ export class GameScene extends Scene {
   private state!: GameState
   private buildingLayer!: GameObjects.Container
   private hover!: GameObjects.Graphics
+  private path!: GameObjects.Graphics
   private battle: Battle | null = null
   private view: BattleView | null = null
   private acc = 0
@@ -52,6 +57,8 @@ export class GameScene extends Scene {
     this.registry.set(REG.battle, null)
     this.battle = null
     this.drawMap()
+    this.path = this.add.graphics()
+    this.drawPath()
     this.buildingLayer = this.add.container()
     this.hover = this.add.graphics()
     this.drawBuildings()
@@ -90,6 +97,18 @@ export class GameScene extends Scene {
     for (const s of map.spawns) this.add.image(s.x * TILE_PX, s.y * TILE_PX, SPAWN_KEY).setOrigin(0)
   }
 
+  /** Dotted enemy route from each spawn to the keep (build phase only). */
+  private drawPath(): void {
+    const { map } = this.state
+    const field = flowField(map)
+    this.path.clear().fillStyle(PATH_COLOR, PATH_ALPHA)
+    for (const s of map.spawns) {
+      for (let p = nextTile(map, field, s.x, s.y); p; p = nextTile(map, field, p.x, p.y)) {
+        this.path.fillCircle((p.x + 0.5) * TILE_PX, (p.y + 0.5) * TILE_PX, PATH_DOT)
+      }
+    }
+  }
+
   private drawBuildings(): void {
     this.buildingLayer.removeAll(true)
     for (const b of this.state.buildings) {
@@ -111,6 +130,9 @@ export class GameScene extends Scene {
     this.hover
       .lineStyle(2, color)
       .strokeRect(x * TILE_PX + 1, y * TILE_PX + 1, TILE_PX - 2, TILE_PX - 2)
+    if (tool !== "rockPile") return
+    const r = PEASANT.throwRange * TILE_PX
+    this.hover.lineStyle(2, color, 0.6).strokeCircle((x + 0.5) * TILE_PX, (y + 0.5) * TILE_PX, r)
   }
 
   override update(_time: number, delta: number): void {
@@ -120,7 +142,7 @@ export class GameScene extends Scene {
     while (this.acc >= TICK_MS && b.result === "running") {
       this.acc -= TICK_MS
       stepBattle(this.state, b, TICKS_PER_SEC)
-      this.view.throws(b)
+      this.view.events(b)
       this.game.events.emit(EV.changed)
     }
     this.view.render(b, Math.min(1, this.acc / TICK_MS))
@@ -134,6 +156,7 @@ export class GameScene extends Scene {
     this.battle = startWave(this.state)
     this.registry.set(REG.battle, this.battle)
     this.view = new BattleView(this)
+    this.path.setVisible(false)
     this.acc = 0
     this.game.events.emit(EV.changed)
   }
@@ -148,6 +171,7 @@ export class GameScene extends Scene {
     this.view?.destroy()
     this.view = null
     this.battle = null
+    this.path.setVisible(true)
     this.registry.set(REG.battle, null)
     const gain = winStage(this.state)
     this.game.events.emit(EV.toast, `Victory! +${gain.wood} wood, +${gain.stone} stone`)

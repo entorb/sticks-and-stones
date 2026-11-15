@@ -26,3 +26,9 @@
 - Idle peasants throw rocks from rock piles (2 per pile, 1 stone per 5 throws); raiders kill
   peasants in melee reach. Win → plunder + next stage, lose → new village.
 - Tests: stage 1 with 4 throwers is won (corridor + 5 generated maps), with 0 it is lost.
+
+### M3 fixes
+
+- Rocks fly as projectiles with an arc and deal damage on hit; hit flash, HP bars, throw animation,
+  dying enemies fade out.
+- Build phase shows the enemy route (dots) and the throw range when placing a rock pile.
